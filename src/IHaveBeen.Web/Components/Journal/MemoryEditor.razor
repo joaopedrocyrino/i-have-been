@@ -1,0 +1,27 @@
+<DialogShell Title="@(IsNew ? "A new place." : "Edit your memory.")" TitleId="editor-title" Eyebrow="SAVE A LITTLE OF THE WORLD" CloseLabel="Close editor" OnClose="OnClose">
+
+        @if (Notice is not null) { <p class="notice error" role="alert">@Notice</p> }
+        <EditForm Model="Draft" OnValidSubmit="OnSave" FormName="memory"><DataAnnotationsValidator /><ValidationSummary />
+            <label class="check"><InputCheckbox @bind-Value="Draft.IsWishlist" /> On my wishlist · show in yellow</label>
+            <label>Title<InputText @bind-Value="Draft.Title" maxlength="160" /></label><div class="fields"><label>City<InputText @bind-Value="Draft.City" maxlength="120" /></label><label>Country<InputText @bind-Value="Draft.Country" maxlength="120" /></label></div>
+            <label>The story<InputTextArea @bind-Value="Draft.Description" rows="4" maxlength="10000" /></label>
+            @if (Draft.IsWishlist) {
+                <small>Leave city blank to wish for an entire country.</small><label>Planned date (optional)<InputDate @bind-Value="Draft.PlannedOn" /></label>
+            } else {
+                <div class="fields"><label>Visited on<InputDate @bind-Value="Draft.VisitedOn" /></label><label>Until (optional)<InputDate @bind-Value="Draft.EndedOn" /></label></div>
+            }
+            <div class="fields"><label>Latitude<InputNumber @bind-Value="Draft.Latitude" step="any" /></label><label>Longitude<InputNumber @bind-Value="Draft.Longitude" step="any" /></label></div>
+            <label class="check"><InputCheckbox @bind-Value="Draft.IncludeInShares" /> Include this memory and its media in shared maps</label><small>Keep this unchecked for memories only you can see.</small>
+            <button class="primary" type="submit" disabled="@Busy">@(Busy ? "Saving…" : (Draft.IsWishlist ? "Save wish ↗" : "Save memory ↗"))</button>
+        </EditForm>
+    
+</DialogShell>
+
+@code {
+    [Parameter, EditorRequired] public LogInput Draft { get; set; } = null!;
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+}

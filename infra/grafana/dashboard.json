@@ -1,0 +1,676 @@
+{
+  "uid": "i-have-been-operations",
+  "title": "I Have Been \u2014 Operations",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "tags": [
+    "i-have-been",
+    "opentelemetry"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "metrics",
+        "label": "Grafana Cloud Metrics",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "refresh": 1
+      },
+      {
+        "name": "environment",
+        "type": "custom",
+        "query": "production,development",
+        "current": {
+          "text": "production",
+          "value": "production"
+        },
+        "options": [
+          {
+            "text": "production",
+            "value": "production",
+            "selected": true
+          },
+          {
+            "text": "development",
+            "value": "development",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "API p50 latency (seconds)",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(ihb_http_request_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m])))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "API p95 latency (seconds)",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(ihb_http_request_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m])))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "API p99 latency (seconds)",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(ihb_http_request_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m])))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "API requests per second",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(ihb_http_request_duration_seconds_count{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m]))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "API server error rate",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(ihb_http_request_duration_seconds_count{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\",http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(ihb_http_request_duration_seconds_count{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m])), 0.000001)",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Throttled requests per second",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(ihb_http_request_duration_seconds_count{job=\"i-have-been\",deployment_environment_name=\"$environment\",http_response_status_code=\"429\"}[5m]))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Authentication / authorization denials",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (http_response_status_code) (rate(ihb_http_request_duration_seconds_count{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\",http_response_status_code=~\"401|403\"}[5m]))",
+          "legendFormat": "HTTP {{http_response_status_code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Slowest API routes (p95)",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10,histogram_quantile(0.95,sum by (le,http_route) (rate(ihb_http_request_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\",request_kind=\"request\",http_route=~\"/api/.*\"}[5m]))))",
+          "legendFormat": "{{http_route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Database command p95",
+      "description": "Command execution up to response headers; excludes reader consumption. No SQL or parameters are exported.",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by (le,outcome)(rate(ihb_database_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\"}[5m])))",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Garage and malware scan p95",
+      "description": "Garage open measures response headers; HTTP request duration includes streaming original media.",
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by (le,dependency_operation)(rate(ihb_dependency_duration_seconds_bucket{job=\"i-have-been\",deployment_environment_name=\"$environment\"}[5m])))",
+          "legendFormat": "{{dependency_operation}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Dependency health (1 healthy, 0 unavailable)",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ihb_dependency_healthy{job=\"i-have-been\",deployment_environment_name=\"$environment\"}",
+          "legendFormat": "{{dependency}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Uploads by result",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome)(rate(ihb_uploads_total{job=\"i-have-been\",deployment_environment_name=\"$environment\"}[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Active HTTP requests / Blazor connections",
+      "description": "Includes long-lived Blazor connections; latency panels filter the separate connection population.",
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ihb_http_active_requests{job=\"i-have-been\",deployment_environment_name=\"$environment\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Process working set",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dotnet_process_memory_working_set_bytes{job=\"i-have-been\",deployment_environment_name=\"$environment\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Process CPU seconds per second",
+      "description": "1 equals one full CPU core. Container memory/CPU limits remain separate.",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(dotnet_process_cpu_time_seconds_total{job=\"i-have-been\",deployment_environment_name=\"$environment\"}[5m]))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "GC pause seconds per second",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${metrics}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(dotnet_gc_pause_time_seconds_total{job=\"i-have-been\",deployment_environment_name=\"$environment\"}[5m]))",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    }
+  ]
+}

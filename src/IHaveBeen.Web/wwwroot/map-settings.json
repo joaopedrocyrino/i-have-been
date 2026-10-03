@@ -1,0 +1,7 @@
+{
+  "tiles": {
+    "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "© OpenStreetMap contributors",
+    "offlineCache": false
+  }
+}

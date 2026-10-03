@@ -1,0 +1,18 @@
+<ComponentStyles For="@typeof(StarRating)" />
+@if (ReadOnly) {
+    <span class="star-display" role="img" aria-label="@($"{Value} out of 5 stars")">@(new string('★', Value) + new string('☆', 5 - Value)) <small>@Value/5</small></span>
+} else {
+    <div class="star-input" role="group" aria-label="Experience rating">
+        <button type="button" class="quiet" aria-label="0 stars" aria-pressed="@(Value == 0)" @onclick="() => ValueChanged.InvokeAsync(0)">Clear</button>
+        @for (var i = 1; i <= 5; i++) {
+            var stars = i;
+            <button type="button" class="star-button @(Value >= stars ? "filled" : "")" aria-label="@($"{stars} {(stars == 1 ? "star" : "stars")}")" aria-pressed="@(Value == stars)" @onclick="() => ValueChanged.InvokeAsync(stars)">@(Value >= stars ? "★" : "☆")</button>
+        }
+        <span>@Value/5</span>
+    </div>
+}
+@code {
+    [Parameter] public int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+}

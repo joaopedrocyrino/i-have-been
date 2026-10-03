@@ -1,0 +1,182 @@
+name: Production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-${{ github.repository }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: Verify production release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Scan Git history for secrets
+        run: make secrets-check
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Configure disposable CI stack
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+          printf 'APP_IMAGE=%s\n' "$image" >> "$GITHUB_ENV"
+          python3 scripts/init-env.py
+          python3 - <<'PYENV'
+          from pathlib import Path
+          path = Path('.env')
+          text = path.read_text().replace('TELEMETRY_ENABLED=false', 'TELEMETRY_ENABLED=true').replace('TELEMETRY_TRACE_SAMPLE_RATIO=0.1', 'TELEMETRY_TRACE_SAMPLE_RATIO=1').replace('TELEMETRY_METRIC_INTERVAL_MS=60000', 'TELEMETRY_METRIC_INTERVAL_MS=10000')
+          path.write_text(text)
+          PYENV
+      - run: npm ci --ignore-scripts
+      - run: node scripts/validate-production.mjs
+      - name: Lint deployment scripts
+        run: |
+          bash -n scripts/deploy-production.sh scripts/deploy-remote.sh scripts/seed-ci-clamav.sh
+          docker run --rm --network none -v "$PWD:/work:ro" -w /work koalaman/shellcheck:v0.11.0 scripts/deploy-production.sh scripts/deploy-remote.sh scripts/seed-ci-clamav.sh infra/clamav/ci-entrypoint.sh infra/clamav/ci-healthcheck.sh
+      - run: node --test scripts/media-preflight.test.mjs scripts/offline.test.mjs scripts/deployment.test.mjs
+      - run: dotnet restore IHaveBeen.slnx --locked-mode
+      - run: dotnet build IHaveBeen.slnx -c Release --no-restore
+      - run: dotnet test --solution IHaveBeen.slnx -c Release --no-build --no-restore
+      - name: Build the release image once
+        run: docker build --build-arg SOURCE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" --tag "$APP_IMAGE" .
+      - name: Validate collector configurations
+        run: |
+          image=$(docker compose --profile observability config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["otel-collector"]["image"])')
+          docker run --rm -v "$PWD/infra/otel/collector.local.yaml:/etc/otelcol/config.yaml:ro" "$image" validate --config=/etc/otelcol/config.yaml
+          docker run --rm -v "$PWD/infra/otel/collector.yaml:/etc/otelcol/config.yaml:ro" -e GRAFANA_CLOUD_OTLP_ENDPOINT=https://otlp-gateway-prod-us-central-0.grafana.net/otlp -e GRAFANA_CLOUD_INSTANCE_ID=123 -e GRAFANA_CLOUD_API_TOKEN=fixture-private-token "$image" validate --config=/etc/otelcol/config.yaml
+      - name: Validate alert rules
+        run: docker run --rm --network none -v "$PWD/infra/grafana:/rules:ro" --entrypoint /bin/promtool prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e check rules /rules/alerts.yaml
+      - name: Restore ClamAV signature cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            output/clamav/*.cvd
+            output/clamav/*.cld
+            output/clamav/*.sign
+          key: clamav-1.5.4-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: clamav-1.5.4-${{ runner.os }}-
+      - name: Seed missing ClamAV signatures from the official image
+        run: bash scripts/seed-ci-clamav.sh
+      - name: Start disposable application stack
+        run: docker compose -p ihb-ci --profile observability up -d --no-build
+        env:
+          TELEMETRY_ENABLED: 'true'
+          TELEMETRY_TRACE_SAMPLE_RATIO: '1'
+          TELEMETRY_METRIC_INTERVAL_MS: '10000'
+      - run: docker compose -p ihb-ci --profile tools run --rm smoke
+      - run: node scripts/security-smoke.mjs ihb-ci
+      - run: node scripts/telemetry-smoke.mjs ihb-ci
+      - run: docker compose -p ihb-ci --profile tools run --rm auth-browser
+        env:
+          AUTH_TEST_PROJECT: ihb-ci
+      - run: docker compose -p ihb-ci --profile tools run --rm browser
+      - run: docker compose -p ihb-ci --profile tools run --rm offline-browser
+        env:
+          OFFLINE_TEST_PROJECT: ihb-ci
+      - name: Export the tested image
+        run: docker image save "$APP_IMAGE" | gzip -1 > "$RUNNER_TEMP/image.tar.gz"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tested-production-image
+          path: ${{ runner.temp }}/image.tar.gz
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: browser-previews
+          path: output/*.png
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Diagnose failed CI stack
+        if: failure()
+        run: |
+          docker compose -p ihb-ci --profile observability ps --all || true
+          docker compose -p ihb-ci --profile observability logs --no-color --tail=200 clamav garage garage-init postgres migrate app otel-collector || true
+          container=$(docker compose -p ihb-ci ps --all --quiet clamav || true)
+          if [[ -n "$container" ]]; then
+            docker inspect --format 'state={{json .State}} restarts={{.RestartCount}}' "$container"
+          fi
+      - run: docker compose -p ihb-ci --profile tools --profile observability down --volumes
+        if: always()
+
+  publish:
+    name: Publish the tested image
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+    env:
+      APP_IMAGE: ${{ needs.verify.outputs.image }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tested-production-image
+          path: ${{ runner.temp }}/tested-image
+      - name: Load and publish without rebuilding
+        id: publish
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gzip -dc "$RUNNER_TEMP/tested-image/image.tar.gz" | docker image load
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$APP_IMAGE"
+          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$APP_IMAGE")
+          [[ "$digest" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]
+          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to shared droplet
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://${{ vars.APP_HOSTNAME || 'i-have-been.cyrino.dev' }}
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/i-have-been' }}
+      CADDY_CONTAINER: ${{ vars.CADDY_CONTAINER || 'csl-caddy-1' }}
+      APP_HOSTNAME: ${{ vars.APP_HOSTNAME || 'i-have-been.cyrino.dev' }}
+      APP_IMAGE: ${{ needs.publish.outputs.image }}
+      RELEASE_SHA: ${{ github.sha }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/deploy-production.sh

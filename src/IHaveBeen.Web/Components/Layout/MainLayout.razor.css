@@ -1,0 +1,14 @@
+#blazor-error-ui {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 14px;
+  background: var(--wish-card);
+  z-index: 2000
+}
+
+.app-layout ::deep .access-message {
+  padding: 40px
+}

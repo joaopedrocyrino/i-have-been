@@ -1,0 +1,142 @@
+name: i-have-been
+
+services:
+  otel-collector:
+    profiles: [observability]
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.162.0@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6
+    command: [--config=/etc/otelcol/config.yaml]
+    environment:
+      GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT:-}
+      GRAFANA_CLOUD_INSTANCE_ID: ${GRAFANA_CLOUD_INSTANCE_ID:-}
+      GRAFANA_CLOUD_API_TOKEN: ${GRAFANA_CLOUD_API_TOKEN:-}
+    volumes: [./infra/otel/collector.yaml:/etc/otelcol/config.yaml:ro]
+    networks: [private, telemetry_egress]
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    cpu_period: 100000
+    cpu_quota: 50000
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  clamav:
+    image: clamav/clamav:1.5.4_base
+    platform: linux/amd64
+    environment:
+      TZ: UTC
+    volumes:
+      - ./infra/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+      - clamav_signatures:/var/lib/clamav
+    networks: [private, scanner_updates]
+    mem_limit: 4g
+    healthcheck:
+      test: [CMD, clamdcheck.sh]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+    restart: unless-stopped
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ihb}
+      POSTGRES_DB: ${POSTGRES_DB:-ihb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env first}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [private]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  garage:
+    image: dxflrs/garage:v2.4.1
+    command: [/garage, server, --single-node]
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Generate .env first}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Generate .env first}
+    volumes:
+      - ./infra/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    networks: [private]
+    healthcheck:
+      test: [CMD, /garage, status]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  garage-init:
+    profiles: [deploy]
+    image: node:22-alpine
+    command: [node, /scripts/garage-init.mjs]
+    environment:
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Generate .env first}
+      S3_BUCKET: ${S3_BUCKET:-i-have-been-media}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Generate .env first}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Generate .env first}
+    volumes: [./scripts/garage-init.mjs:/scripts/garage-init.mjs:ro]
+    networks: [private]
+    depends_on:
+      garage: {condition: service_healthy}
+  migrate:
+    profiles: [deploy]
+    image: ${APP_IMAGE:?Deploy a tested image digest}
+    command: [--migrate]
+    environment: &application
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Database=${POSTGRES_DB:-ihb};Username=${POSTGRES_USER:-ihb};Password=${POSTGRES_PASSWORD:?Generate .env first}
+      Storage__Endpoint: http://garage:3900
+      Storage__Bucket: ${S3_BUCKET:-i-have-been-media}
+      Storage__AccessKey: ${S3_ACCESS_KEY_ID:?Generate .env first}
+      Storage__SecretKey: ${S3_SECRET_ACCESS_KEY:?Generate .env first}
+      DataProtection__Path: /var/lib/i-have-been/keys
+      Security__AllowRegistration: ${ALLOW_REGISTRATION:-true}
+      Security__TrustedProxies__0: ${TRUSTED_PROXY_IP:?Deploy detects the shared Caddy address}
+      Storage__UserPhotoMaxBytes: ${USER_PHOTO_MAX_BYTES:-20971520}
+      Storage__UserVideoMaxBytes: ${USER_VIDEO_MAX_BYTES:-104857600}
+      MalwareScanning__Host: clamav
+      Telemetry__Enabled: ${TELEMETRY_ENABLED:-false}
+      Telemetry__Endpoint: http://otel-collector:4318
+      Telemetry__TraceSampleRatio: ${TELEMETRY_TRACE_SAMPLE_RATIO:-0.1}
+      Telemetry__MetricIntervalMilliseconds: ${TELEMETRY_METRIC_INTERVAL_MS:-60000}
+      Telemetry__ServiceVersion: ${RELEASE_SHA:-local}
+      AllowedHosts: ${APP_HOSTNAME:?Configure the production hostname};localhost;127.0.0.1
+    volumes: [protection_keys:/var/lib/i-have-been/keys]
+    networks: [private]
+    depends_on:
+      postgres: {condition: service_healthy}
+  app:
+    image: ${APP_IMAGE:?Deploy a tested image digest}
+    environment: *application
+    expose: ["8080"]
+    mem_limit: ${APP_MEMORY_LIMIT:-768m}
+    volumes: [protection_keys:/var/lib/i-have-been/keys]
+    networks: [private, proxy]
+    labels:
+      caddy: ${APP_HOSTNAME:?Configure the production hostname}
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+      caddy_ingress_network: proxy
+    depends_on:
+      postgres: {condition: service_healthy}
+      garage: {condition: service_healthy}
+      clamav: {condition: service_healthy}
+    restart: unless-stopped
+networks:
+  private:
+    internal: true
+  proxy:
+    external: true
+    name: proxy
+  scanner_updates:
+  telemetry_egress:
+volumes:
+  postgres_data:
+  garage_meta:
+  garage_data:
+  protection_keys:
+  clamav_signatures:

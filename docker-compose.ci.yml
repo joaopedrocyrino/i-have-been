@@ -1,0 +1,11 @@
+# Disposable CI only. Production keeps its persistent signature volume.
+# Bundled databases bootstrap the cache; FreshClam still updates and verifies them.
+services:
+  clamav:
+    image: clamav/clamav:1.5.4
+    pull_policy: always
+    entrypoint: [/bin/sh, /etc/clamav/ci-entrypoint.sh]
+    volumes:
+      - ./infra/clamav/ci-entrypoint.sh:/etc/clamav/ci-entrypoint.sh:ro
+      - ./output/clamav:/var/lib/clamav
+      - ./infra/clamav/ci-healthcheck.sh:/usr/local/bin/clamdcheck.sh:ro

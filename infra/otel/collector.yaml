@@ -1,0 +1,84 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        max_request_body_size: 4194304
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 160
+    spike_limit_mib: 32
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: span
+        statements:
+          - keep_keys(span.attributes, ["http.route", "http.request.method", "http.response.status_code", "dependency.operation", "outcome"])
+          - set(span.trace_state, "")
+    metric_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: datapoint
+        statements:
+          - set(datapoint.attributes["deployment.environment.name"], resource.attributes["deployment.environment.name"])
+          - keep_keys(datapoint.attributes, ["deployment.environment.name", "http.route", "http.request.method", "http.response.status_code", "request.kind", "dependency.operation", "outcome", "dependency", "gc.heap.generation", "gc.collection.generation", "cpu.mode", "error.type"])
+    log_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: log
+        statements:
+          - keep_keys(log.attributes, ["Route", "Method", "StatusCode", "Dependency", "Healthy", "{OriginalFormat}"])
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+    send_batch_max_size: 512
+
+extensions:
+  basicauth/grafana:
+    client_auth:
+      username: ${env:GRAFANA_CLOUD_INSTANCE_ID}
+      password: ${env:GRAFANA_CLOUD_API_TOKEN}
+exporters:
+  otlphttp/grafana:
+    endpoint: ${env:GRAFANA_CLOUD_OTLP_ENDPOINT}
+    auth:
+      authenticator: basicauth/grafana
+    tls:
+      insecure: false
+      insecure_skip_verify: false
+    timeout: 5s
+    sending_queue:
+      enabled: true
+      num_consumers: 2
+      queue_size: 128
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 15s
+      max_elapsed_time: 60s
+service:
+  extensions: [basicauth/grafana]
+  telemetry:
+    logs:
+      level: warn
+    metrics:
+      level: none
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [otlphttp/grafana]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [otlphttp/grafana]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [otlphttp/grafana]

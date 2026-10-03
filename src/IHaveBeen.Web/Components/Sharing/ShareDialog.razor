@@ -1,0 +1,22 @@
+<ComponentStyles For="@typeof(ShareDialog)" />
+    <DialogShell Title="Share a glimpse." TitleId="share-title" Eyebrow="LET FRIENDS FOLLOW YOUR FOOTSTEPS" CloseLabel="Close sharing" OnClose="OnClose">
+<p>@SharedMemoryCount memories are included. A link gives read-only access to their media. Anyone you send it to can open it.</p>
+        <label>Link name<input @bind="Draft.Label" maxlength="80" placeholder="Family, summer trip…" /></label><label>Access lasts<select @bind="Draft.Hours"><option value="24">24 hours</option><option value="168">7 days</option><option value="720">30 days</option><option value="custom">Choose date and time</option><option value="never">No expiration</option></select></label>
+        @if (Draft.Hours == "custom") { <label>Expires at (your local time)<input type="datetime-local" value="@Draft.CustomExpiration" @onchange="e => Draft.CustomExpiration = e.Value?.ToString() ?? string.Empty" /></label> }
+        <button class="primary" @onclick="OnCreate" disabled="@Busy">Create private link ↗</button>
+        @if (NewShareUrl is not null) { <div class="notice"><label>Copy this link now<input value="@NewShareUrl" readonly /></label><button @onclick="OnCopy">Copy link</button><small>The full link is shown once. Revoke it at any time below.</small></div> }
+        <div class="share-list">@foreach (var link in Links) { <div><span><strong>@link.Label</strong><small>@(link.RevokedAt is not null ? "Revoked" : link.ExpiresAt is null ? "No expiration" : $"Expires {link.ExpiresAt:dd MMM yyyy HH:mm} UTC")</small></span>@if (link.RevokedAt is null) { <button class="danger" @onclick="() => OnRevoke.InvokeAsync(link.Id)">Revoke</button> }</div> }</div>
+    
+</DialogShell>
+
+@code {
+    [Parameter, EditorRequired] public ShareDraft Draft { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<ShareView> Links { get; set; } = [];
+    [Parameter] public int SharedMemoryCount { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? NewShareUrl { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnCreate { get; set; }
+    [Parameter] public EventCallback OnCopy { get; set; }
+    [Parameter] public EventCallback<Guid> OnRevoke { get; set; }
+}

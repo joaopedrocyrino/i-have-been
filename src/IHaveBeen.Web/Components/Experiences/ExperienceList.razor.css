@@ -1,0 +1,31 @@
+.experiences {
+  margin: 22px 0
+}
+
+.experiences ::deep h3 {
+  font-size: 15px
+}
+
+.experiences ::deep .section-heading button {
+  padding: 8px;
+  font-size: 11px
+}
+
+.experiences ::deep .experience-card {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line)
+}
+
+.experiences ::deep .experience-card .description {
+  margin: 8px 0;
+  font-size: 13px
+}
+
+.experiences ::deep .experience-card .actions {
+  margin-top: 10px
+}
+
+.experiences ::deep .experience-card .actions button {
+  font-size: 11px;
+  padding: 7px 10px
+}

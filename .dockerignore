@@ -1,0 +1,31 @@
+**/bin
+**/obj
+.git
+.env
+.env.*
+node_modules
+output
+
+# Ignore nested runtime configuration as well as root dotenv files.
+**/.env
+**/.env.*
+
+# Private credential stores and key material.
+**/.ssh/
+**/.aws/
+**/.secrets/
+**/secrets.json
+**/credentials.json
+**/id_rsa
+**/id_ed25519
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+
+# Runtime data and database backups.
+backups/
+**/backups/
+**/*.dump
+**/*.sql.gz
+**/*.sql.zip

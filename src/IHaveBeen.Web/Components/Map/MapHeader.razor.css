@@ -1,0 +1,108 @@
+.topbar {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 800;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  border: 1px solid var(--surface-border);
+  border-radius: 100px;
+  background: var(--topbar-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow)
+}
+
+.brand span:not(.brand-symbol) {
+  display: block;
+  font-size: 11px;
+  color: var(--muted)
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center
+}
+
+.topbar-actions ::deep form {
+  margin: 0
+}
+
+@media(max-width:850px) {
+  .topbar {
+    border-radius: 22px
+  }
+
+
+  .brand span:not(.brand-symbol) {
+    display: none
+  }
+
+
+  .topbar-actions {
+    gap: 2px
+  }
+
+
+  .topbar-actions ::deep button {
+    font-size: 11px;
+    padding: 9px
+  }
+}
+
+@media(max-width:600px) {
+  .topbar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    padding: 10px
+  }
+
+
+  .topbar-actions ::deep button {
+    padding: 7px;
+    font-size: 10px
+  }
+
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: 4px
+  }
+
+
+  .topbar .brand {
+    width: 100%
+  }
+
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: space-between
+  }
+}
+
+.topbar ::deep >.theme-switcher {
+  margin-left: auto;
+}
+
+@media(max-width:600px) {
+  .topbar .brand {
+    width: auto;
+    flex: 1;
+  }
+
+
+  .topbar ::deep >.theme-switcher {
+    margin-left: 0;
+  }
+
+
+  .topbar .topbar-actions {
+    flex-basis: 100%;
+  }
+}

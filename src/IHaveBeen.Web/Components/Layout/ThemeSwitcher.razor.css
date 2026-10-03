@@ -1,0 +1,28 @@
+.theme-switcher {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--field);
+}
+
+.theme-switcher button {
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.theme-switcher button[aria-pressed="true"] {
+  background: var(--selected-card);
+  color: var(--text);
+}
+
+@media(max-width:600px) {
+  .theme-switcher button {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}

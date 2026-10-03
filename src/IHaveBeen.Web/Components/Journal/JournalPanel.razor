@@ -1,0 +1,23 @@
+<ComponentStyles For="@typeof(JournalPanel)" />
+<JournalShell Countries="@Logs.Where(x => !x.IsWishlist).Select(x => x.Country).Distinct().Count()" Visited="@Logs.Count(x => !x.IsWishlist)" Wishlist="@Logs.Count(x => x.IsWishlist)">
+    <p class="eyebrow">MY TRAVEL JOURNAL</p><h1>Every place has a story.</h1>
+    <div class="stats"><div><strong>@Logs.Where(x => !x.IsWishlist).Select(x => x.Country).Distinct().Count()</strong><span>countries</span></div><div><strong>@Logs.Count(x => !x.IsWishlist)</strong><span>visited</span></div><div><strong>@Logs.Count(x => x.IsWishlist)</strong><span>wishlist</span></div></div>
+    <p class="map-legend"><span class="legend-visited">● Visited</span><span class="legend-wishlist">● Wishlist</span></p>
+    <p class="hint">Select a country, zoom in closer, then click again to place a pin.</p>
+    @if (Notice is not null) { <p class="notice" role="status">@Notice</p> }
+    @if (Loading) { <p class="hint">Opening your journal…</p> }
+    @if (!Loading && Logs.Count == 0) { <div class="empty-state"><span>↗</span><h2>Your world is waiting.</h2><p>Pin your first trip and bring its memories along.</p><button class="primary" @onclick="OnNew">Add my first memory</button></div> }
+    <div class="journal-filter" role="group" aria-label="Filter places"><button aria-pressed="@(filter == "all")" @onclick='() => filter = "all"'>All</button><button aria-pressed="@(filter == "visited")" @onclick='() => filter = "visited"'>Visited</button><button aria-pressed="@(filter == "wishlist")" @onclick='() => filter = "wishlist"'>Wishlist</button></div>
+    <div class="log-list">@foreach (var log in Logs.Where(x => filter == "all" || (filter == "wishlist" ? x.IsWishlist : !x.IsWishlist))) {
+        <button class="log-card @(log.IsWishlist ? "wishlist" : "") @(SelectedId == log.Id ? "selected" : "")" @onclick="() => OnSelect.InvokeAsync(log.Id)"><span class="log-icon">@(log.Media.Count > 0 ? "▧" : "↗")</span><span><strong>@log.Title</strong><small>@(log.City.Length > 0 ? log.City + ", " : "")@log.Country</small><small>@(log.IsWishlist ? (log.PlannedOn is {} planned ? $"Wishlist · {planned:dd MMM yyyy}" : "Wishlist · someday") : log.VisitedOn?.ToString("dd MMM yyyy")) · @log.Experiences.Count experiences</small></span></button>
+    }</div>
+</JournalShell>
+@code {
+    private string filter = "all";
+    [Parameter, EditorRequired] public IReadOnlyList<LogView> Logs { get; set; } = [];
+    [Parameter] public Guid? SelectedId { get; set; }
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public EventCallback OnNew { get; set; }
+    [Parameter] public EventCallback<Guid> OnSelect { get; set; }
+}

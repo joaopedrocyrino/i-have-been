@@ -1,0 +1,14 @@
+<ComponentStyles For="@typeof(MapHeader)" />
+<header class="topbar">
+    <div class="brand"><span class="brand-symbol">↗</span><div><strong>I have been</strong><span id="@NameId">@Tagline</span></div></div>
+    <ThemeSwitcher />
+    @if (ReadOnly) { <span class="badge">Read-only journal</span> }
+    else { <div class="topbar-actions">@ChildContent</div> }
+</header>
+
+@code {
+    [Parameter] public string Tagline { get; set; } = "Your world, remembered.";
+    [Parameter] public string? NameId { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

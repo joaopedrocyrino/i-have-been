@@ -1,0 +1,12 @@
+<ComponentStyles For="@typeof(AuthShell)" />
+<div class="auth-preferences"><ThemeSwitcher /></div>
+<main class="auth-shell">
+    <div class="auth-story"><span class="brand-symbol">↗</span><p class="eyebrow">I HAVE BEEN</p><h1>@Headline</h1><p>@Introduction</p><div class="auth-globe">◎</div></div>
+    <section class="auth-card">@ChildContent</section>
+</main>
+
+@code {
+    [Parameter, EditorRequired] public RenderFragment Headline { get; set; } = null!;
+    [Parameter, EditorRequired] public string Introduction { get; set; } = "";
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
+}

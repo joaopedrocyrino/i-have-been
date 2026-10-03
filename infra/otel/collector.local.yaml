@@ -1,0 +1,67 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        max_request_body_size: 4194304
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 160
+    spike_limit_mib: 32
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: span
+        statements:
+          - keep_keys(span.attributes, ["http.route", "http.request.method", "http.response.status_code", "dependency.operation", "outcome"])
+          - set(span.trace_state, "")
+    metric_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: datapoint
+        statements:
+          - set(datapoint.attributes["deployment.environment.name"], resource.attributes["deployment.environment.name"])
+          - keep_keys(datapoint.attributes, ["deployment.environment.name", "http.route", "http.request.method", "http.response.status_code", "request.kind", "dependency.operation", "outcome", "dependency", "gc.heap.generation", "gc.collection.generation", "cpu.mode", "error.type"])
+    log_statements:
+      - context: resource
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name"])
+      - context: log
+        statements:
+          - keep_keys(log.attributes, ["Route", "Method", "StatusCode", "Dependency", "Healthy", "{OriginalFormat}"])
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+    send_batch_max_size: 512
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  debug:
+    verbosity: detailed
+    sampling_initial: 100
+    sampling_thereafter: 1
+service:
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: none
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [debug, prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [debug]

@@ -1,0 +1,11 @@
+@page "/s/{Id:guid}"
+@attribute [AllowAnonymous]
+<PageTitle>A shared journey · I Have Been</PageTitle>
+<div id="shared-root" data-share-id="@Id">
+    <MapCanvas Label="Shared travel map" />
+    <MapHeader ReadOnly="true" NameId="shared-name" Tagline="A shared journey" />
+    <ComponentStyles For="@typeof(JournalPanel)" />
+    <JournalShell Id="shared-journal" MetricsId="shared"><p class="eyebrow">PLACES &amp; MEMORIES</p><h1 id="shared-title">Opening this journal…</h1><p id="shared-status" role="status">Checking your invitation.</p><div id="shared-logs"></div></JournalShell>
+    <section id="shared-detail" class="detail-panel" ihb-memory-details hidden></section>
+</div>
+@code { [Parameter] public Guid Id { get; set; } }

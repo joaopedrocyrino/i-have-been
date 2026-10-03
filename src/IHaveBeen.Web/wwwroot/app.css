@@ -1,0 +1,351 @@
+:root {
+  color-scheme: light;
+  --bg: #eef2f0;
+  --panel: #fff;
+  --text: #16211d;
+  --muted: #65716d;
+  --line: #d9e0dc;
+  --green: #1f8a5b;
+  --shadow: 0 14px 42px rgba(27, 42, 35, .12);
+  --glass: #fffffff0;
+  --topbar-glass: #ffffffe0;
+  --detail-glass: #fffffff5;
+  --surface-border: #ffffffb0;
+  --button: #fff;
+  --button-hover: #edf4f0;
+  --field: #fafcfb;
+  --card: #f4f7f5;
+  --selected-card: #e5f2eb;
+  --wish-card: #fff6d9;
+  --yellow: #956908;
+  --star: #b88708;
+  --danger: #a63737;
+  --notice: #edf8f1;
+  --notice-border: #bed9c8;
+  --error-bg: #fff3f3;
+  --error-border: #e3baba;
+  --auth-story: #dae8df;
+  --auth-globe: #c6dacc;
+  --auth-copy: #53665a;
+  --badge: #e4f1e9;
+  --media-bg: #f1f3f2;
+  --primary-text: #fff;
+  --focus: #173f7a;
+  --focus-shadow: #1f8a5b18;
+  --map-bg: #dbe8e9
+}
+
+* {
+  box-sizing: border-box
+}
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg)
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--button);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text)
+}
+
+button:hover {
+  background: var(--button-hover)
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: .6
+}
+
+a {
+  color: var(--green)
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0
+}
+
+h1 {
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -.7px
+}
+
+h2 {
+  font-size: 24px;
+  letter-spacing: -.6px
+}
+
+small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px
+}
+
+.brand strong {
+  display: block;
+  font-size: 19px;
+  letter-spacing: -.6px
+}
+
+.brand-symbol {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--primary-text);
+  font-size: 26px
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 12px
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 10px 0
+}
+
+.primary {
+  color: var(--primary-text);
+  background: var(--green);
+  border-color: var(--green)
+}
+
+.primary:hover {
+  background: #176944
+}
+
+.quiet {
+  border: 0;
+  background: transparent;
+  padding: 8px
+}
+
+.danger {
+  color: var(--danger)
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px
+}
+
+.section-heading .eyebrow {
+  margin: 0
+}
+
+.section-heading+h2 {
+  margin-top: 16px
+}
+
+.description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+  font-size: 14px;
+  margin: 20px 0
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 16px 0
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 14px;
+  outline: none
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--focus-shadow)
+}
+
+input[type=file] {
+  padding: 8px;
+  font-size: 12px
+}
+
+input[type=checkbox] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green)
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px
+}
+
+.fields label {
+  margin-top: 0
+}
+
+.notice {
+  padding: 12px;
+  border: 1px solid var(--notice-border);
+  background: var(--notice);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 16px 0;
+  overflow-wrap: anywhere
+}
+
+.notice.error {
+  background: var(--error-bg);
+  border-color: var(--error-border)
+}
+
+.validation-message,
+.validation-summary-errors {
+  color: var(--danger);
+  font-size: 12px
+}
+
+.badge {
+  padding: 8px 13px;
+  background: var(--badge);
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--green)
+}
+
+[hidden] {
+  display: none !important
+}
+
+@media(max-width:600px) {
+  .brand strong {
+    font-size: 15px
+  }
+}
+
+@media(max-width:600px) {
+  .brand-symbol {
+    width: 29px;
+    height: 29px;
+    font-size: 21px
+  }
+}
+
+@media(max-width:600px) {
+  .hint {
+    margin: 7px 0
+  }
+}
+
+.wish-button {
+  color: var(--yellow)
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111715;
+  --panel: #1a2420;
+  --text: #eef5f1;
+  --muted: #a5b3ad;
+  --line: #30413a;
+  --green: #36c57e;
+  --shadow: 0 14px 42px rgba(0, 0, 0, .35);
+  --glass: #1a2420f2;
+  --topbar-glass: #1a2420ed;
+  --detail-glass: #1a2420f7;
+  --surface-border: #30413ab0;
+  --button: #223029;
+  --button-hover: #2c3d34;
+  --field: #121a17;
+  --card: #223029;
+  --selected-card: #173426;
+  --wish-card: #382f17;
+  --yellow: #e0ab3d;
+  --star: #e0ab3d;
+  --danger: #ff9292;
+  --notice: #173426;
+  --notice-border: #365c46;
+  --error-bg: #3b2222;
+  --error-border: #754444;
+  --auth-story: #182c23;
+  --auth-globe: #244638;
+  --auth-copy: #b6c9bf;
+  --badge: #173426;
+  --media-bg: #121a17;
+  --primary-text: #111715;
+  --focus: #8fb8ff;
+  --focus-shadow: #36c57e26;
+  --map-bg: #111b23;
+}
+
+:root[data-theme="dark"] .primary:hover {
+  background: #4ed78f;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}

@@ -1,0 +1,41 @@
+.star-display {
+  color: var(--yellow);
+  font-size: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px
+}
+
+.star-display ::deep small {
+  font-size: 11px
+}
+
+.star-input {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 10px 0
+}
+
+.star-input ::deep .star-button {
+  font-size: 29px;
+  padding: 4px;
+  border: 0;
+  color: #9caaa3;
+  background: transparent
+}
+
+.star-input ::deep .star-button.filled {
+  color: var(--star)
+}
+
+.star-input ::deep >span {
+  font-size: 12px;
+  margin-left: 6px;
+  color: var(--muted)
+}
+
+.star-input ::deep .star-button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px
+}

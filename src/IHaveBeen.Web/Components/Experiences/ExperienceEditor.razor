@@ -1,0 +1,25 @@
+<ComponentStyles For="@typeof(ExperienceEditor)" />
+<DialogShell Title="@(IsNew ? "A new experience." : "Edit your experience.")" TitleId="experience-title" Eyebrow="@($"A LITTLE MORE OF {City}")" CloseLabel="Close experience editor" OnClose="OnClose">
+
+    @if (Notice is not null) { <p class="notice error" role="alert">@Notice</p> }
+    <EditForm Model="Draft" OnValidSubmit="OnSave" FormName="experience"><DataAnnotationsValidator /><ValidationSummary />
+        <label>Experience title<InputText @bind-Value="Draft.Title" maxlength="160" /></label>
+        <label>Category<InputSelect aria-label="Category" @bind-Value="Draft.Category">@foreach (var category in Enum.GetValues<ExperienceCategory>()) { <option value="@category">@category</option> }</InputSelect></label>
+        <p class="field-label">Your rating</p><StarRating @bind-Value="Draft.Rating" />
+        <label>Experience story<InputTextArea @bind-Value="Draft.Description" rows="4" maxlength="10000" /></label>
+        <label>Address (optional)<InputText @bind-Value="Draft.Address" maxlength="300" /></label>
+        <label>Experience date (optional)<InputDate @bind-Value="Draft.VisitedOn" /></label>
+        <button class="primary" type="submit" disabled="@Busy">@(Busy ? "Saving…" : "Save experience ↗")</button>
+    </EditForm>
+
+</DialogShell>
+
+@code {
+    [Parameter, EditorRequired] public ExperienceInput Draft { get; set; } = null!;
+    [Parameter] public string City { get; set; } = "";
+    [Parameter] public string? Notice { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+}

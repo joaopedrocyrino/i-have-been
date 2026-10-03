@@ -1,0 +1,32 @@
+<ComponentStyles For="@typeof(MemoryDetails)" />
+    <section class="detail-panel"><div class="section-heading"><p class="eyebrow">@(Memory.City.Length > 0 ? Memory.City + " · " : "")@Memory.Country</p><button class="quiet" aria-label="Close memory" @onclick="OnClose">×</button></div><h2>@Memory.Title</h2><p class="hint">@(Memory.IsWishlist ? (Memory.PlannedOn is {} planned ? $"Wishlist · planned {planned:dd MMM yyyy}" : "Wishlist · someday") : Memory.VisitedOn?.ToString("dd MMM yyyy")) @(Memory.EndedOn is {} end ? $"— {end:dd MMM yyyy}" : "") · @(Memory.IncludeInShares ? "Included in shared maps" : "Only you")</p><p class="description">@Memory.Description</p>
+        @if (Memory.IsWishlist) { <button class="primary" disabled="@Busy" @onclick="OnMarkVisited">Mark as visited ↗</button> }
+        @if (!string.IsNullOrWhiteSpace(Memory.City)) { <ExperienceList Items="Memory.Experiences" Busy="Busy" OnNew="OnNewExperience" OnEdit="OnEditExperience" OnDelete="OnDeleteExperience" /> }
+        <div class="media-grid">@foreach (var media in Memory.Media) {
+            <figure>@if (media.ContentType.StartsWith("image/")) { <a href="@media.Url" target="_blank" rel="noopener"><img src="@media.Url" alt="@(media.Caption.Length > 0 ? media.Caption : media.OriginalName)" loading="lazy" /></a> } else { <video src="@media.Url" controls preload="metadata"></video> }
+                <figcaption>@media.Caption <a href="@(media.Url + "?download=1")">Original ↗</a><button class="quiet danger" @onclick="() => OnDeleteMedia.InvokeAsync(media.Id)">Remove</button></figcaption>
+            </figure>
+        }</div>
+        @if (!string.IsNullOrWhiteSpace(Notice)) { <p class="notice" role="alert">@Notice</p> }
+        <label class="upload-label">Add photos or videos<input id="media-files" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple @onchange="OnUpload" disabled="@(Busy || Usage is null || (Usage.Limit is {} limit && Usage.Count >= limit))" /></label>
+        @if (Usage is not null) {
+            <small>@(Usage.Limit is {} cap ? $"{Usage.Count}/{cap} photos/videos in your account" : $"{Usage.Count} photos/videos · unlimited storage count") · photos up to @(Usage.PhotoMaxBytes / 1048576) MiB · videos up to @(Usage.VideoMaxBytes / 1048576) MiB.</small>
+        }
+        <small>Original quality · files are checked before saving.</small>
+        <div class="actions"><button @onclick="OnEdit">Edit memory</button><button class="danger" @onclick="OnDelete">Delete</button></div>
+    </section>
+@code {
+    [Parameter] public IHaveBeen.Application.Media.MediaUsage? Usage { get; set; }
+    [Parameter] public string? Notice { get; set; }
+    [Parameter, EditorRequired] public LogView Memory { get; set; } = null!;
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnMarkVisited { get; set; }
+    [Parameter] public EventCallback OnNewExperience { get; set; }
+    [Parameter] public EventCallback<ExperienceView> OnEditExperience { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeleteExperience { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnUpload { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeleteMedia { get; set; }
+}

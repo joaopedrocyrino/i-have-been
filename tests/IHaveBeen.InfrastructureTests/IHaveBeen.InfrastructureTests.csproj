@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport></PropertyGroup>
+  <ItemGroup><Using Include="Xunit" /></ItemGroup>
+  <ItemGroup><PackageReference Include="xunit.v3.mtp-v2" Version="4.0.1" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/IHaveBeen.Infrastructure/IHaveBeen.Infrastructure.csproj" /><ProjectReference Include="../../src/IHaveBeen.Web/IHaveBeen.Web.csproj" /></ItemGroup>
+</Project>

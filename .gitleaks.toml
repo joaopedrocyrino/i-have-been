@@ -1,0 +1,13 @@
+title = "I Have Been secret scanning"
+
+[extend]
+useDefault = true
+
+# The runtime generator uses long hex values and GK-prefixed Garage key IDs.
+# These names are not all covered by provider-specific default rules.
+[[rules]]
+id = "ihb-generated-runtime-credential"
+description = "Generated database or Garage runtime credential"
+regex = '''(?i)(?:POSTGRES_PASSWORD|GARAGE_RPC_SECRET|GARAGE_ADMIN_TOKEN|S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY)["']?\s*[:=]\s*["']?((?:GK)?[a-f0-9]{24,})'''
+secretGroup = 1
+keywords = ["POSTGRES_PASSWORD", "GARAGE_RPC_SECRET", "GARAGE_ADMIN_TOKEN", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"]

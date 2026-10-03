@@ -1,0 +1,17 @@
+<ComponentStyles For="@typeof(ExperienceList)" />
+<section class="experiences"><div class="section-heading"><h3>City experiences</h3><button disabled="@Busy" @onclick="OnNew">＋ Add experience</button></div>
+    @if (Items.Count == 0) { <p class="hint">Remember a bar, restaurant, party, museum, or another favorite place.</p> }
+    @foreach (var item in Items) {
+        <article class="experience-card"><strong>@item.Title</strong><small>@item.Category @(item.VisitedOn is {} date ? $"· {date:dd MMM yyyy}" : "")</small>
+            <StarRating Value="item.Rating" ReadOnly="true" /><p class="description">@item.Description</p><small>@item.Address</small>
+            <div class="actions"><button disabled="@Busy" @onclick="() => OnEdit.InvokeAsync(item)">Edit experience</button><button class="danger" disabled="@Busy" @onclick="() => OnDelete.InvokeAsync(item.Id)">Delete experience</button></div>
+        </article>
+    }
+</section>
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ExperienceView> Items { get; set; } = [];
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnNew { get; set; }
+    [Parameter] public EventCallback<ExperienceView> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+}

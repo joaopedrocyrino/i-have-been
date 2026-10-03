@@ -1,0 +1,17 @@
+<link rel="stylesheet" href="@Href" data-component-style="@Href" />
+
+@code {
+    [Parameter, EditorRequired] public Type For { get; set; } = null!;
+
+    private string Href
+    {
+        get
+        {
+            const string prefix = "IHaveBeen.Web.Components.";
+            var name = For.FullName ?? throw new InvalidOperationException("A component type is required.");
+            if (!name.StartsWith(prefix, StringComparison.Ordinal))
+                throw new InvalidOperationException("Styles must belong to an application component.");
+            return "/Components/" + name[prefix.Length..].Replace('.', '/') + ".razor.rz.scp.css";
+        }
+    }
+}

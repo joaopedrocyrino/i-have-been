@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <DisableScopedCssBundling>true</DisableScopedCssBundling>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../IHaveBeen.Application/IHaveBeen.Application.csproj" />
+    <ProjectReference Include="../IHaveBeen.Infrastructure/IHaveBeen.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Components/Map/MapCanvas.razor.css" CssScope="ihb-map-canvas" />
+    <None Update="Components/Map/MapHeader.razor.css" CssScope="ihb-map-header" />
+    <None Update="Components/Layout/ThemeSwitcher.razor.css" CssScope="ihb-theme-switcher" />
+    <None Update="Components/Journal/JournalShell.razor.css" CssScope="ihb-journal-shell" />
+    <!-- Stable scopes also let the shared journal reuse these presentation styles. -->
+    <None Update="Components/Journal/JournalPanel.razor.css" CssScope="ihb-journal-panel" />
+    <None Update="Components/Journal/MemoryDetails.razor.css" CssScope="ihb-memory-details" />
+    <None Update="Components/Experiences/ExperienceList.razor.css" CssScope="ihb-experience-list" />
+    <None Update="Components/Experiences/StarRating.razor.css" CssScope="ihb-star-rating" />
+  </ItemGroup>
+</Project>

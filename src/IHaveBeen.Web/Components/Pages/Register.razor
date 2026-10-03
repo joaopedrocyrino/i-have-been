@@ -1,0 +1,20 @@
+@page "/register"
+@attribute [AllowAnonymous]
+<PageTitle>Create your journal · I Have Been</PageTitle>
+<AuthShell Introduction="A private home for your travels. Share a glimpse when you choose.">
+    <Headline>Your next chapter<br />starts here.</Headline>
+    <ChildContent><p class="eyebrow">LET'S GET YOU ON THE MAP</p><h2>Create your journal.</h2>
+        @if (Error == "1") { <p class="notice error" role="alert">Unable to create the account. Use a valid email and a password with at least 12 characters, uppercase, lowercase, a number and a symbol.</p> }
+        <form method="post" action="/account/register" data-enhance="false"><AntiforgeryToken />
+            <label>Your name<input name="name" autocomplete="name" maxlength="80" required /></label>
+            <label>Email<input name="email" type="email" autocomplete="username" maxlength="254" required /></label>
+            <label>Password<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required /></label>
+            <small>12+ characters, uppercase, lowercase, a number and a symbol.</small>
+            <label class="check"><input name="trustDevice" type="checkbox" value="true" aria-describedby="trust-device-help" />Trust this device for 15 days</label>
+            <small id="trust-device-help">Leave unchecked on shared devices to sign in for this browser session.</small>
+            <button class="primary" type="submit">Start my journal ↗</button>
+        </form><p>Already have an account? <a href="/login" data-enhance-nav="false">Sign in</a></p>
+    
+    </ChildContent>
+</AuthShell>
+@code { [SupplyParameterFromQuery] public string? Error { get; set; } }

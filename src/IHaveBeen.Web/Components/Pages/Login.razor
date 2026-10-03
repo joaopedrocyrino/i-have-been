@@ -1,0 +1,19 @@
+@page "/login"
+@attribute [AllowAnonymous]
+<PageTitle>Sign in · I Have Been</PageTitle>
+<AuthShell Introduction="Keep the moments, places and people that made the journey yours.">
+    <Headline>A world of places.<br />A journal of you.</Headline>
+    <ChildContent><p class="eyebrow">YOUR PRIVATE TRAVEL JOURNAL</p><h2>Welcome back.</h2><p>Sign in to pick up where you left off.</p>
+        @if (Error == "1") { <p class="notice error" role="alert">Unable to sign in. Check your credentials or try again later.</p> }
+        <form method="post" action="/account/login" data-enhance="false">
+            <AntiforgeryToken />
+            <label>Email<input name="email" type="email" autocomplete="username" maxlength="254" required /></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" maxlength="128" required /></label>
+            <label class="check"><input name="trustDevice" type="checkbox" value="true" aria-describedby="trust-device-help" />Trust this device for 15 days</label>
+            <small id="trust-device-help">Leave unchecked on shared devices to sign in for this browser session.</small>
+            <button class="primary" type="submit">Open my journal ↗</button>
+        </form><p>New here? <a href="/register" data-enhance-nav="false">Create your journal</a></p>
+    
+    </ChildContent>
+</AuthShell>
+@code { [SupplyParameterFromQuery] public string? Error { get; set; } }

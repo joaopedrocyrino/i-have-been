@@ -1,0 +1,13 @@
+.offline-overlay { position: fixed; inset: 0; z-index: 2000; background: #14231a88; backdrop-filter: blur(6px); display: grid; place-items: center; padding: 20px; }
+.offline-dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 28px; width: min(560px, 100%); max-height: calc(100dvh - 40px); overflow: auto; box-shadow: var(--shadow); }
+.offline-dialog .primary { width: 100%; margin-top: 16px; }
+.offline-dialog small { margin-top: 20px; }
+.media-selection { max-height: 240px; overflow: auto; margin-top: 18px; }
+.media-selection label { padding: 10px; background: var(--card); border-radius: 12px; margin: 8px 0; }
+.media-selection span { min-width: 0; overflow-wrap: anywhere; }
+.media-selection strong { display: block; }
+#connection-status { color: var(--muted); font-size: 11px; }
+#detail .quiet { float: right; }
+#detail .notice { clear: both; }
+#journal .journal-content label { margin-top: 12px; }
+@media(max-width:600px) { .offline-overlay { padding: 10px; } .offline-dialog { padding: 22px; } }

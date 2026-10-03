@@ -1,0 +1,23 @@
+<ComponentStyles For="@typeof(JournalShell)" />
+<details class="journal-panel" data-journal-panel ihb-journal-panel open>
+    <summary class="journal-summary" aria-label="Travel journal" aria-controls="@Id" aria-describedby="@(Id + "-metrics")">
+        <span id="@(Id + "-metrics")" class="journal-metrics">
+            <span><strong id="@MetricId("countries")">@Countries</strong><span>countries</span></span>
+            <span><strong id="@MetricId("visited")">@Visited</strong><span>visited</span></span>
+            <span><strong id="@MetricId("wishlist")">@Wishlist</strong><span>wishlist</span></span>
+        </span>
+        <span class="journal-chevron" aria-hidden="true">⌃</span>
+    </summary>
+    <div id="@Id" class="journal-content">@ChildContent</div>
+</details>
+
+@code {
+    [Parameter] public int Countries { get; set; }
+    [Parameter] public int Visited { get; set; }
+    [Parameter] public int Wishlist { get; set; }
+    [Parameter] public string Id { get; set; } = "travel-journal";
+    [Parameter] public string? MetricsId { get; set; }
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
+
+    private string? MetricId(string metric) => MetricsId is null ? null : $"{MetricsId}-{metric}";
+}

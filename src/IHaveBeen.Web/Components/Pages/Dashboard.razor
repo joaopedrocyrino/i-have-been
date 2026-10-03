@@ -1,0 +1,26 @@
+@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+<PageTitle>My world · I Have Been</PageTitle>
+<MapCanvas />
+<MapHeader>
+    <a href="/offline/index.html" data-enhance="false" class="badge">Offline ↗</a>
+    <button @onclick="NewLog">＋ Add a memory</button><button class="wish-button" @onclick="NewWish">☆ Add a wish</button><button @onclick="OpenShares">Share my map ↗</button><form action="/account/logout" method="post" data-enhance="false"><AntiforgeryToken /><button type="submit" class="quiet">Sign out</button></form>
+</MapHeader>
+<JournalPanel Logs="logs" SelectedId="selected?.Id" Notice="@notice" Loading="loading" OnNew="NewLog" OnSelect="SelectLog" />
+@if (selected is not null && !editing) {
+    <MemoryDetails Memory="selected" Busy="busy" Usage="mediaUsage" Notice="@notice" OnClose="() => selected = null" OnUpload="UploadMedia" OnEdit="EditLog" OnDelete="DeleteLog" OnDeleteMedia="DeleteMedia" OnMarkVisited="MarkVisited" OnNewExperience="NewExperience" OnEditExperience="EditExperience" OnDeleteExperience="DeleteExperience" />
+}
+@if (editing) {
+    <MemoryEditor Draft="draft" IsNew="@(editingId is null)" Busy="busy" Notice="@notice" OnClose="() => editing = false" OnSave="SaveLog" />
+}
+@if (sharing) {
+    <ShareDialog Draft="shareDraft" Links="shares" SharedMemoryCount="logs.Count(x => x.IncludeInShares)" Busy="busy" NewShareUrl="@newShareUrl" OnClose="() => sharing = false" OnCreate="CreateShare" OnCopy="CopyShare" OnRevoke="RevokeShare" />
+}
+
+@if (editingExperience && selected is not null) {
+    <ExperienceEditor Draft="experienceDraft" City="@selected.City" IsNew="@(experienceId is null)" Busy="busy" Notice="@notice" OnClose="() => editingExperience = false" OnSave="SaveExperience" />
+}

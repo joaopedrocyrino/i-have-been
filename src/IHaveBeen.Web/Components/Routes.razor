@@ -1,0 +1,9 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+            <NotAuthorized><p class="access-message">Sign in to open your journal. <a href="/login" data-enhance-nav="false">Sign in</a></p></NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound><LayoutView Layout="typeof(MainLayout)"><p class="access-message">This page could not be found.</p></LayoutView></NotFound>
+</Router>

@@ -1,0 +1,12 @@
+{
+    "name": "i-have-been-checks",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "smoke": "node scripts/smoke.mjs",
+        "browser": "node scripts/browser-smoke.mjs"
+    },
+    "devDependencies": {
+        "playwright": "1.63.0"
+    }
+}

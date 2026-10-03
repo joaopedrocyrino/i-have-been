@@ -1,0 +1,88 @@
+#map {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--map-bg)
+}
+
+#map ::deep .leaflet-control-attribution {
+  font-size: 9px !important
+}
+
+#map ::deep .leaflet-bottom.leaflet-left {
+  bottom: 15px !important;
+  left: 8px !important
+}
+
+@media(max-width:600px) {
+  #map ::deep .leaflet-bottom.leaflet-left {
+    bottom: calc(var(--journal-card-height, 80px) + 32px + env(safe-area-inset-bottom)) !important
+  }
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) saturate(.72) brightness(.82) contrast(1.08);
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-control-zoom a,
+:root[data-theme="dark"] #map ::deep .leaflet-control-attribution,
+:root[data-theme="dark"] #map ::deep .leaflet-tooltip,
+:root[data-theme="dark"] #map ::deep .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] #map ::deep .leaflet-popup-tip {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-tooltip-top:before {
+  border-top-color: var(--panel);
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-tooltip-bottom:before {
+  border-bottom-color: var(--panel);
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-tooltip-left:before {
+  border-left-color: var(--panel);
+}
+
+:root[data-theme="dark"] #map ::deep .leaflet-tooltip-right:before {
+  border-right-color: var(--panel);
+}
+
+#map ::deep .country-shape:focus {
+  outline: none;
+}
+
+#map ::deep .country-shape:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 3px;
+}
+
+.map-status {
+  position: fixed;
+  bottom: 18px;
+  left: 66px;
+  max-width: min(600px, calc(100vw - 90px));
+  z-index: 600;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.map-status:empty {
+  display: none;
+}
+
+@media(max-width:600px) {
+  .map-status {
+    bottom: calc(var(--journal-card-height, 80px) + 38px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 85px);
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IHaveBeen.Application/IHaveBeen.Application.csproj" />
+    <Project Path="src/IHaveBeen.Domain/IHaveBeen.Domain.csproj" />
+    <Project Path="src/IHaveBeen.Infrastructure/IHaveBeen.Infrastructure.csproj" />
+    <Project Path="src/IHaveBeen.Web/IHaveBeen.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IHaveBeen.UnitTests/IHaveBeen.UnitTests.csproj" />
+    <Project Path="tests/IHaveBeen.ArchitectureTests/IHaveBeen.ArchitectureTests.csproj" />
+    <Project Path="tests/IHaveBeen.InfrastructureTests/IHaveBeen.InfrastructureTests.csproj" />
+  </Folder>
+</Solution>

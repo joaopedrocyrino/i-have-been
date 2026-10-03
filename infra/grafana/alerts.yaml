@@ -1,0 +1,46 @@
+groups:
+  - name: i-have-been-operations
+    interval: 1m
+    rules:
+      - alert: IHaveBeenTelemetryMissing
+        expr: absent_over_time(ihb_dependency_healthy{job="i-have-been",deployment_environment_name="production"}[10m])
+        for: 2m
+        labels: {severity: critical, service: i-have-been}
+        annotations:
+          summary: No telemetry received for I Have Been
+          description: Check app/collector health and Grafana credentials. Use an independent HTTPS readiness monitor to distinguish an app outage from export failure.
+      - alert: IHaveBeenDependencyUnavailable
+        expr: min by (dependency) (ihb_dependency_healthy{job="i-have-been",deployment_environment_name="production"}) < 1
+        for: 3m
+        labels: {severity: critical, service: i-have-been}
+        annotations:
+          summary: A private dependency is unavailable
+          description: Check PostgreSQL, Garage or ClamAV; stale malware definitions intentionally fail uploads closed.
+      - alert: IHaveBeenApiSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(ihb_http_request_duration_seconds_bucket{job="i-have-been",deployment_environment_name="production",request_kind="request",http_route=~"/api/.*",http_route!~".*/media.*|/api/offline.*"}[5m]))) > 2
+        for: 10m
+        labels: {severity: warning, service: i-have-been}
+        annotations:
+          summary: API p95 exceeds 2 seconds
+          description: Inspect route latency and database timing. Media transfers and offline snapshots use separate duration populations.
+      - alert: IHaveBeenServerErrors
+        expr: sum(rate(ihb_http_request_duration_seconds_count{job="i-have-been",deployment_environment_name="production",request_kind="request",http_route=~"/api/.*",http_response_status_code=~"5.."}[5m])) / clamp_min(sum(rate(ihb_http_request_duration_seconds_count{job="i-have-been",deployment_environment_name="production",request_kind="request",http_route=~"/api/.*"}[5m])), 0.000001) > 0.05 and sum(increase(ihb_http_request_duration_seconds_count{job="i-have-been",deployment_environment_name="production",request_kind="request",http_route=~"/api/.*"}[5m])) >= 20
+        for: 5m
+        labels: {severity: critical, service: i-have-been}
+        annotations:
+          summary: API server errors exceed 5 percent
+          description: At least 20 requests were observed in 5 minutes. Inspect safe operation logs and sampled traces.
+      - alert: IHaveBeenRateLimitSpike
+        expr: sum(rate(ihb_http_request_duration_seconds_count{job="i-have-been",deployment_environment_name="production",http_response_status_code="429"}[5m])) > 1
+        for: 5m
+        labels: {severity: warning, service: i-have-been}
+        annotations:
+          summary: Sustained request throttling
+          description: Inspect Caddy traffic and request load before changing existing abuse limits.
+      - alert: IHaveBeenMemoryPressure
+        expr: dotnet_process_memory_working_set_bytes{job="i-have-been",deployment_environment_name="production"} > 644245094
+        for: 10m
+        labels: {severity: warning, service: i-have-been}
+        annotations:
+          summary: App process memory exceeds 80 percent of the default 768 MiB cap
+          description: Adjust this threshold if APP_MEMORY_LIMIT changes. Process working set is not total container memory.

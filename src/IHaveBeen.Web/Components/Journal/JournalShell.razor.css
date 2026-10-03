@@ -1,0 +1,126 @@
+.journal-panel {
+  position: fixed;
+  left: 18px;
+  top: 102px;
+  width: 320px;
+  max-height: calc(100dvh - 164px);
+  overflow: auto;
+  z-index: 700;
+  padding: 24px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--surface-border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.journal-summary {
+  display: none;
+}
+
+@media(max-width:850px) {
+  .journal-panel {
+    width: 270px;
+  }
+}
+
+@media(max-width:600px) {
+  .journal-panel {
+    top: auto;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: none;
+    overflow: hidden;
+    padding: 0;
+    border-radius: 20px;
+  }
+
+  .journal-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    list-style: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .journal-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .journal-summary::marker {
+    content: "";
+  }
+
+  .journal-summary:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -4px;
+    border-radius: 18px;
+  }
+
+  .journal-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    text-align: center;
+  }
+
+  .journal-metrics>span+span {
+    border-left: 1px solid var(--line);
+  }
+
+  .journal-metrics strong {
+    display: block;
+    color: var(--text);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.15;
+  }
+
+  .journal-metrics span>span {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  .journal-chevron {
+    color: var(--muted);
+    font-size: 22px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .journal-panel[open][data-journal-ready] .journal-chevron {
+    transform: rotate(180deg);
+  }
+
+  .journal-panel[open] .journal-summary {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .journal-panel[open] {
+    z-index: 720;
+  }
+
+  .journal-content {
+    padding: 20px;
+    max-height: calc(100dvh - 132px - var(--journal-card-height, 80px) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  /* Keep the first mobile paint compact before the native disclosure is initialized. */
+  .journal-panel:not([data-journal-ready]) .journal-content {
+    display: none;
+  }
+
+  .journal-content ::deep .stats {
+    display: none;
+  }
+}

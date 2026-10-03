@@ -1,0 +1,8 @@
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+<ComponentStyles For="@typeof(MapCanvas)" />
+<div id="map" aria-label="@Label"></div>
+<div id="map-status" class="map-status" role="status" aria-live="polite"></div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Interactive travel map";
+}
