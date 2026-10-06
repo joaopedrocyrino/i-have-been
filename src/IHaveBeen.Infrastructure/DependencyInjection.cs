@@ -58,12 +58,17 @@ public static class DependencyInjection
         });
         services.AddOptions<MalwareScannerOptions>().Bind(configuration.GetSection(MalwareScannerOptions.SectionName))
             .ValidateDataAnnotations().ValidateOnStart();
-        services.AddSingleton<ClamAvMalwareScanner>();
-        services.AddSingleton<IMalwareScanner, ObservedMalwareScanner>();
+        var scanningEnabled = configuration.GetValue("MalwareScanning:Enabled", true);
+        if (scanningEnabled)
+        {
+            services.AddSingleton<ClamAvMalwareScanner>();
+            services.AddSingleton<IMalwareScanner, ObservedMalwareScanner>();
+        }
+        else services.AddSingleton<IMalwareScanner, DisabledMalwareScanner>();
         services.AddSingleton(new AccountPolicy(configuration.GetValue("Security:AllowRegistration", true)));
         services.AddHostedService<ObjectCleanupWorker>();
-        services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres").AddCheck<GarageHealthCheck>("garage")
-            .AddCheck<MalwareScannerHealthCheck>("malware-scanner");
+        var health = services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres").AddCheck<GarageHealthCheck>("garage");
+        if (scanningEnabled) health.AddCheck<MalwareScannerHealthCheck>("malware-scanner");
         return services;
     }
     public static async Task MigrateDatabaseAsync(this IServiceProvider services, CancellationToken ct = default)

@@ -22,6 +22,7 @@ services:
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
   clamav:
+    profiles: [scanner]
     image: clamav/clamav:1.5.4_base
     platform: linux/amd64
     environment:
@@ -62,7 +63,9 @@ services:
       - ./infra/garage/garage.toml:/etc/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
-    networks: [private]
+    networks:
+      private:
+        aliases: [i-have-been-storage]
     healthcheck:
       test: [CMD, /garage, status]
       interval: 2s
@@ -74,7 +77,7 @@ services:
     image: node:22-alpine
     command: [node, /scripts/garage-init.mjs]
     environment:
-      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_URL: http://i-have-been-storage:3903
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Generate .env first}
       S3_BUCKET: ${S3_BUCKET:-i-have-been-media}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Generate .env first}
@@ -90,7 +93,8 @@ services:
     environment: &application
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: Host=postgres;Database=${POSTGRES_DB:-ihb};Username=${POSTGRES_USER:-ihb};Password=${POSTGRES_PASSWORD:?Generate .env first}
-      Storage__Endpoint: http://garage:3900
+      NO_PROXY: localhost,127.0.0.1,i-have-been-storage,otel-collector
+      Storage__Endpoint: http://i-have-been-storage:3900
       Storage__Bucket: ${S3_BUCKET:-i-have-been-media}
       Storage__AccessKey: ${S3_ACCESS_KEY_ID:?Generate .env first}
       Storage__SecretKey: ${S3_SECRET_ACCESS_KEY:?Generate .env first}
@@ -99,6 +103,7 @@ services:
       Security__TrustedProxies__0: ${TRUSTED_PROXY_IP:?Deploy detects the shared Caddy address}
       Storage__UserPhotoMaxBytes: ${USER_PHOTO_MAX_BYTES:-20971520}
       Storage__UserVideoMaxBytes: ${USER_VIDEO_MAX_BYTES:-104857600}
+      MalwareScanning__Enabled: ${MALWARE_SCANNING_ENABLED:-true}
       MalwareScanning__Host: clamav
       Telemetry__Enabled: ${TELEMETRY_ENABLED:-false}
       Telemetry__Endpoint: http://otel-collector:4318
@@ -124,7 +129,6 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       garage: {condition: service_healthy}
-      clamav: {condition: service_healthy}
     restart: unless-stopped
 networks:
   private:

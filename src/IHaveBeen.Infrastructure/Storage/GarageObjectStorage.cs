@@ -44,7 +44,10 @@ internal sealed class GarageObjectStorage : IObjectStorage, IDisposable
         return new GarageReadStream(response);
     }
     public Task DeleteAsync(string key, CancellationToken ct) => client.DeleteObjectAsync(bucket, key, ct);
-    public async Task CheckAvailabilityAsync(CancellationToken ct) => await client.ListObjectsV2Async(new ListObjectsV2Request { BucketName = bucket, MaxKeys = 1 }, ct);
+    // Validate the configured private bucket and application credentials without
+    // listing or parsing media objects during deployment readiness.
+    public async Task CheckAvailabilityAsync(CancellationToken ct) =>
+        await client.HeadBucketAsync(new HeadBucketRequest { BucketName = bucket }, ct);
     public void Dispose() => client.Dispose();
 
     private sealed class GarageReadStream(GetObjectResponse response) : Stream

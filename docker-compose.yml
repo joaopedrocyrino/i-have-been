@@ -92,6 +92,7 @@ services:
       Security__TrustedProxies__0: ${TRUSTED_PROXY_IP:-127.0.0.1}
       Storage__UserPhotoMaxBytes: ${USER_PHOTO_MAX_BYTES:-20971520}
       Storage__UserVideoMaxBytes: ${USER_VIDEO_MAX_BYTES:-104857600}
+      MalwareScanning__Enabled: ${MALWARE_SCANNING_ENABLED:-true}
       MalwareScanning__Host: clamav
       Telemetry__Enabled: ${TELEMETRY_ENABLED:-false}
       Telemetry__Endpoint: http://otel-collector:4318

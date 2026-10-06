@@ -13,14 +13,15 @@ const releaseFiles = ['docker-compose.prod.yml', 'infra/garage/garage.toml', 'in
 const mock = `#!/usr/bin/env node
 const fs=require('node:fs'), path=require('node:path'), cp=require('node:child_process');
 const tool=path.basename(process.argv[1]), args=process.argv.slice(2), mode=process.env.TEST_FAILURE;
-fs.appendFileSync(process.env.TEST_LOG,JSON.stringify({tool,args,image:process.env.APP_IMAGE,proxy:process.env.TRUSTED_PROXY_IP,tokenPresent:!!process.env.GHCR_TOKEN})+'\\n');
+fs.appendFileSync(process.env.TEST_LOG,JSON.stringify({tool,args,image:process.env.APP_IMAGE,proxy:process.env.TRUSTED_PROXY_IP,tokenPresent:!!process.env.GHCR_TOKEN,scanning:process.env.MALWARE_SCANNING_ENABLED})+'\\n');
 if(tool==='sleep'||tool==='flock') process.exit(0);
 if(tool==='awk') {
  if(args.at(-1)!=='/proc/meminfo') process.exit(1);
- console.log({'low-memory':'984064','two-gib':'2097152','invalid-memory':'unavailable','four-gib-plan':'3928064'}[mode]??'8388608');
+ console.log({'low-memory':'984064','low-memory-with-scanner':'984064','two-gib':'2097152','invalid-memory':'unavailable','four-gib-plan':'3928064'}[mode]??'8388608');
  process.exit(0);
 }
 if(tool==='docker') {
+ if(args[0]==='ps') {if(mode==='low-memory-with-scanner') console.log('fixture-old-scanner');process.exit(0);}
  if(args[0]==='network') process.exit(mode==='network'?1:0);
  if(args[0]==='login') {if(!fs.readFileSync(0).length) process.exit(1);process.exit(0);}
  if(args[0]==='inspect') {
@@ -40,7 +41,7 @@ if(tool==='docker') {
  const command=args.slice(args.indexOf('-f')+2);
  if(command[0]==='config' && command.includes('--services')) {
   const config=fs.readFileSync(args[args.indexOf('--env-file')+1],'utf8');
-  console.log('app\\npostgres\\ngarage\\nclamav'+(config.includes('COMPOSE_PROFILES=observability')?'\\notel-collector':''));
+  console.log('app\\npostgres\\ngarage'+(process.env.MALWARE_SCANNING_ENABLED==='false'?'':'\\nclamav')+(config.includes('COMPOSE_PROFILES=observability')?'\\notel-collector':''));
  }
 
  if(command[0]==='ps' && !(mode==='scanner-missing' && command.at(-1)==='clamav')) console.log('fixture-'+command.at(-1));
@@ -110,6 +111,7 @@ test('successful rollout provisions, backs up and migrates before replacing the 
   const call=(await f.commands()).at(-1);
   assert.equal(call.args[call.args.indexOf('--env-file')+1],join(f.base,'.env'));
   assert.equal(call.image,image);
+  assert.equal(call.scanning,'true');
 });
 
 for(const [failure,message] of [
@@ -136,6 +138,41 @@ test('a 4 GiB plan passes the floor despite kernel-reserved RAM; swap is not cou
   const query=(await f.commands()).find(row=>row.tool==='awk');
   assert.ok(query.args[0].includes('MemTotal:'));
   assert.ok(!query.args[0].includes('SwapTotal:'));
+});
+
+test('disabled scanning deploys on the reported 961 MiB host, stops only its old scanner and preserves runtime secrets', async t=>{
+  const f=await fixture(t,{failure:'low-memory-with-scanner'});
+  f.args.push('false');
+  const result=f.run(); assert.equal(result.status,0,result.stderr);
+  const rows=await f.commands(),calls=composeCalls(rows);
+  assert.ok(calls.every(row=>row.scanning==='false' && !row.args.includes('scanner')));
+  assert.ok(calls.filter(row=>['pull','up','ps'].includes(operation(row)[0])).every(row=>!operation(row).includes('clamav')));
+  assert.deepEqual(rows.filter(row=>row.tool==='docker'&&row.args[0]==='stop').map(row=>row.args),[['stop','fixture-old-scanner']]);
+  const query=rows.find(row=>row.tool==='docker'&&row.args[0]==='ps');
+  assert.ok(query.args.includes('label=com.docker.compose.project=i-have-been') && query.args.includes('label=com.docker.compose.service=clamav'));
+  const current=await realpath(join(f.base,'current'));
+  assert.equal(JSON.parse(await readFile(join(current,'release.json'),'utf8')).malwareScanningEnabled,false);
+  assert.equal(await readFile(join(f.base,'.env'),'utf8'),f.dotenv);
+  const helper=spawnSync('python3',[join(current,'scripts/production-compose.py'),'ps'],{env:f.env,encoding:'utf8'});
+  assert.equal(helper.status,0,helper.stderr);
+  assert.equal((await f.commands()).at(-1).scanning,'false');
+  assert.ok(!(result.stdout+result.stderr).includes('fixture-db-secret'));
+});
+
+test('invalid scanning flags abort before Docker',async t=>{
+  const f=await fixture(t);f.args.push('off');
+  assert.notEqual(f.run().status,0);
+  assert.ok(!(await f.commands()).some(row=>row.tool==='docker'));
+});
+
+test('readiness failure restores the previous release scanning mode',async t=>{
+  const f=await fixture(t,{failure:'health'});
+  const state=join(f.base,'releases','previous','release.json');
+  await writeFile(state,JSON.stringify({image:previousImage,hostname:f.args[3],trustedProxy:'172.20.0.3',malwareScanningEnabled:false}));
+  const result=f.run();assert.notEqual(result.status,0);
+  const starts=startsApp(await f.commands());
+  assert.deepEqual(starts.map(row=>row.scanning),['true','false']);
+  assert.ok((await realpath(join(f.base,'current'))).endsWith('/previous'));
 });
 
 test('scanner startup reports progress, waits for health and persists only selected diagnostics privately', async t => {
@@ -275,6 +312,18 @@ test('SSH driver needs no runtime config and transfers only public release files
   assert.ok(!(await readdir(join(f.base, 'incoming', incoming))).includes('release.tar.gz'));
 });
 
+
+test('SSH driver sends the nonsecret disabled mode while keeping droplet dotenv private',async t=>{
+  const f=await fixture(t,{failure:'low-memory-with-scanner'});
+  const result=spawnSync('bash',[join(repo,'scripts/deploy-production.sh')],{cwd:repo,env:{...f.env,
+    DEPLOY_HOST:'droplet.example.com',DEPLOY_USER:'deployer',DEPLOY_PATH:f.base,
+    DEPLOY_SSH_KEY:'fixture-private-key',DEPLOY_SSH_KNOWN_HOSTS:'fixture-pinned-host',
+    APP_HOSTNAME:f.args[3],APP_IMAGE:image,RELEASE_SHA:sha,CADDY_CONTAINER:'csl-caddy-1',
+    GHCR_USERNAME:'owner',GITHUB_RUN_ID:'1',GITHUB_RUN_ATTEMPT:'1',MALWARE_SCANNING_ENABLED:'false'},encoding:'utf8',timeout:30000});
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(startsApp(await f.commands())[0].scanning,'false');
+  assert.equal(await readFile(join(f.base,'.env'),'utf8'),f.dotenv);
+});
 
 test('SSH disconnect stays failed and points to the droplet status log without retrying deployment', async t => {
   const f=await fixture(t,{failure:'ssh-disconnect'});

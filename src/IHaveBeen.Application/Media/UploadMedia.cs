@@ -54,7 +54,7 @@ public sealed class UploadMediaHandler(ITravelLogRepository logs, IMediaReposito
         var verdict = await scanner.ScanAsync(buffer, cancellationToken);
         if (verdict == MalwareScanResult.Rejected)
             return Observed(UploadOutcome.Malware, Result<MediaDto>.Invalid("This file failed the security scan and was not stored."));
-        if (verdict != MalwareScanResult.Clean)
+        if (verdict is not (MalwareScanResult.Clean or MalwareScanResult.Skipped))
             return Observed(UploadOutcome.ScannerUnavailable, Result<MediaDto>.Unavailable("File scanning is temporarily unavailable. No file was stored; please try again later."));
         buffer.Position = 0;
         var hash = Convert.ToHexStringLower(await SHA256.HashDataAsync(buffer, cancellationToken));

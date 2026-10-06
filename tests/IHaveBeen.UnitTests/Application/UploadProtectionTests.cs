@@ -33,10 +33,12 @@ public sealed class UploadProtectionTests
         Assert.Equal(0, db.Commits); Assert.Equal(Fixtures.Png, scanner.Scanned);
         Assert.Contains(expectedOutcome, outcomes);
     }
-    [Fact]
-    public async Task Clean_scanned_bytes_are_preserved_exactly()
+    [Theory]
+    [InlineData(MalwareScanResult.Clean)]
+    [InlineData(MalwareScanResult.Skipped)]
+    public async Task Accepted_bytes_are_preserved_exactly_with_scanning_or_explicit_bypass(MalwareScanResult verdict)
     {
-        var (db, log) = Store(); var storage = new TestStorage(); var scanner = new TestScanner();
+        var (db, log) = Store(); var storage = new TestStorage(); var scanner = new TestScanner(verdict);
         await using var file = new MemoryStream(Fixtures.Png);
         var result = await Handler(db, storage, scanner).HandleAsync(new(log.Id, file, "file.png", "image/png", file.Length, ""), TestContext.Current.CancellationToken);
         Assert.True(result.IsSuccess); Assert.Equal(Fixtures.Png, scanner.Scanned); Assert.Equal(scanner.Scanned, Assert.Single(storage.Objects).Value);

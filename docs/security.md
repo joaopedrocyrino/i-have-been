@@ -7,7 +7,7 @@
 - Every HTTP API call checks the current cookie/security stamp. Blazor uses browser fetch for data operations so an old interactive circuit cannot bypass API authorization. Circuit state can contain already-viewed data, but it confers no further access.
 - Unsafe account/API methods validate ASP.NET antiforgery tokens, including uploads and anonymous invitation exchanges. There is no permissive CORS policy. The CSP limits scripts and media to this origin, denies framing/objects and preserves tile/image compatibility. User content is rendered as text; uploads reject HTML/SVG and MIME mismatches.
 - Accepted binary media types are header-checked JPEG, PNG, WebP, MP4/MOV and
-  WebM. Header checks recognize containers, not full codec validity. Every new
+  WebM. Header checks recognize containers, not full codec validity. When scanning is enabled (the default), every new
   upload also requires a clean ClamAV verdict before Garage storage; originals
   are preserved without decoding, recompression or transcoding.
 
@@ -15,7 +15,7 @@
 
 - Regular accounts may store 100 files across all their journal entries, with
   photo/video limits of 20/100 MiB by default. Managers have no count limit but
-  still use a 100 MiB safety cap, mandatory scanning and request limits. Types
+  still use a 100 MiB safety cap, scanning when enabled and request limits. Types
   are manually assigned in PostgreSQL; application routes never write them.
 - Quotas are checked early and enforced atomically by PostgreSQL on publication.
   Database type changes affect later requests; downgrades retain existing files.
@@ -39,13 +39,30 @@
 - The browser checks selection count, sizes and allowed headers before any
   file is sent. It is not an antivirus engine or a trusted gate. A WebAssembly
   scanner could add early feedback but a client can bypass it, so server
-  scanning remains mandatory. No private originals or hashes are sent to
+  scanning is the trusted gate when enabled. No private originals or hashes are sent to
   third-party scanning services.
 - Malware signatures reduce risk; a clean verdict cannot prove that every
   unknown threat is absent. Files stay passive private originals, and patched
   scanner/codec components and restricted access remain necessary.
 - Previously stored originals are retained; this change scans new uploads and
   does not label or retroactively scan the existing collection.
+
+## Explicit scanning-disabled mode
+
+- The operator requested a temporary deployment without ClamAV on the 1 GiB
+  shared droplet. `staging` selects `MALWARE_SCANNING_ENABLED=false`; `main`
+  selects `true`. Both branches deploy the same public domain and database.
+- .NET's `MalwareScanning:Enabled` defaults to true. Explicit false registers
+  `DisabledMalwareScanner`, returning `Skipped` and omitting scanner health and
+  dependency metrics. Skipped is not a clean antivirus verdict; startup logs
+  identify the mode. Scanner code/configuration remain available.
+- Files receive no server-side antivirus inspection in this mode. Header and
+  size validation, auth/CSRF/ownership checks, per-account quotas, private Garage
+  and abuse limits remain enforced. Client validation does not establish safety.
+- Re-enabling scanning protects subsequent uploads; it does not scan originals
+  uploaded during the disabled period. No existing media are labeled as scanned.
+- The setting is a nonsecret deployment parameter, recorded in each release.
+  Server runtime credentials remain only in the droplet-owned `.env`.
 
 ## Request limits
 

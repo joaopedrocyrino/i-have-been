@@ -1,11 +1,14 @@
 using System.Diagnostics.Metrics;
 using IHaveBeen.Application.Observability;
+using IHaveBeen.Infrastructure.Security;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace IHaveBeen.Web.Observability;
 
-internal sealed class DependencyHealthWorker(HealthCheckService health, ILoggerFactory logs) : BackgroundService
+internal sealed class DependencyHealthWorker(HealthCheckService health, ILoggerFactory logs, IOptions<MalwareScannerOptions> scanning) : BackgroundService
 {
+    private readonly string[] dependencies = scanning.Value.Enabled ? ["postgres", "garage", "malware-scanner"] : ["postgres", "garage"];
     private readonly ILogger operations = logs.CreateLogger("IHaveBeen.Operations");
     private readonly Dictionary<string, int> previous = new();
     private static readonly Histogram<double> Duration = ApplicationTelemetry.Meter.CreateHistogram<double>("ihb.healthcheck.duration", "s");
@@ -20,7 +23,7 @@ internal sealed class DependencyHealthWorker(HealthCheckService health, ILoggerF
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
                 var report = await health.CheckHealthAsync(timeout.Token);
-                foreach (var name in new[] { "postgres", "garage", "malware-scanner" })
+                foreach (var name in dependencies)
                 {
                     var found = report.Entries.TryGetValue(name, out var entry);
                     var ok = found && entry.Status == HealthStatus.Healthy ? 1 : 0;
@@ -34,7 +37,7 @@ internal sealed class DependencyHealthWorker(HealthCheckService health, ILoggerF
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch
             {
-                foreach (var name in new[] { "postgres", "garage", "malware-scanner" })
+                foreach (var name in dependencies)
                     Healthy.Record(0, new KeyValuePair<string, object?>("dependency", name));
                 operations.LogWarning("DependencyHealthCheckUnavailable");
             }

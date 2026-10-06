@@ -2,7 +2,7 @@ name: Production
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
 
 permissions:
   contents: read
@@ -97,6 +97,14 @@ jobs:
       - run: docker compose -p ihb-ci --profile tools run --rm offline-browser
         env:
           OFFLINE_TEST_PROJECT: ihb-ci
+      - name: Verify uploads with malware scanning explicitly disabled
+        env:
+          MALWARE_SCANNING_ENABLED: 'false'
+          BASE_URL: http://localhost:4188
+        run: |
+          docker compose -p ihb-ci stop app clamav
+          docker compose -p ihb-ci up -d --no-deps --no-build app
+          node scripts/scanning-disabled-smoke.mjs ihb-ci
       - name: Export the tested image
         run: docker image save "$APP_IMAGE" | gzip -1 > "$RUNNER_TEMP/image.tar.gz"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -173,6 +181,8 @@ jobs:
       APP_HOSTNAME: ${{ vars.APP_HOSTNAME || 'i-have-been.cyrino.dev' }}
       APP_IMAGE: ${{ needs.publish.outputs.image }}
       RELEASE_SHA: ${{ github.sha }}
+      # Both branches deploy to the same host; staging is the temporary low-memory mode.
+      MALWARE_SCANNING_ENABLED: ${{ github.ref_name == 'staging' && 'false' || 'true' }}
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
     steps:

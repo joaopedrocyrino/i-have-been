@@ -17,6 +17,9 @@ if (args.Contains("--migrate"))
     return;
 }
 
+if (!app.Configuration.GetValue("MalwareScanning:Enabled", true))
+    app.Logger.LogWarning("Server-side malware scanning is disabled by deployment configuration. Uploaded files are not scanned.");
+
 app.UsePresentation();
 app.MapFeatures();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode(options => options.DisableWebSocketCompression = true);

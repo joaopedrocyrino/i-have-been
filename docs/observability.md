@@ -28,7 +28,7 @@ network. There is no public metrics or telemetry ingestion route.
 | `ihb.database.duration` | EF command latency and success/error/cancellation; query text/parameters are never collected |
 | `ihb.dependency.duration` | Garage put/open/delete and ClamAV scan time/outcome |
 | `ihb.uploads` | Accepted uploads and quota, size, format, malware or unavailable-scanner rejections |
-| `ihb.dependency.healthy`, `ihb.healthcheck.duration` | PostgreSQL/Garage/ClamAV probes every 60 seconds, with a 10-second probe budget |
+| `ihb.dependency.healthy`, `ihb.healthcheck.duration` | PostgreSQL/Garage and enabled ClamAV probes every 60 seconds, with a 10-second probe budget |
 | `System.Runtime` | Process memory/CPU, GC, exceptions and thread-pool pressure |
 | Sampled traces | Request spans with child database, storage and scan spans |
 | Safe operational warnings | Server errors, throttling and dependency health changes; trace IDs correlate sampled requests |
@@ -168,3 +168,7 @@ require your Grafana account settings; they are not activated automatically.
 - [Grafana Cloud collector setup](https://grafana.com/docs/opentelemetry/collector/opentelemetry-collector/)
 - [.NET runtime metrics](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/built-in-metrics-runtime)
 - [Prometheus OTLP conversion](https://prometheus.io/docs/guides/opentelemetry/)
+
+When malware scanning is explicitly disabled, the app omits the scanner health
+probe and its dependency measurements; it does not report skipped files as
+successful antivirus scans. PostgreSQL/Garage and request/upload metrics remain.

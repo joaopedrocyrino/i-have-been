@@ -7,6 +7,8 @@ incoming=$2
 export APP_IMAGE=$3 APP_HOSTNAME=$4
 caddy_container=$5
 registry_user=$6
+export MALWARE_SCANNING_ENABLED=${7:-true}
+[[ "$MALWARE_SCANNING_ENABLED" == true || "$MALWARE_SCANNING_ENABLED" == false ]]
 [[ "$base" =~ ^/[a-zA-Z0-9_/-]+$ && "$base" != / && "$base" != /opt ]]
 [[ "$incoming" =~ ^[a-f0-9]{40}-[0-9]+-[0-9]+$ ]]
 [[ "$APP_IMAGE" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]
@@ -65,7 +67,11 @@ $snapshot"; fi
 $snapshot"; fi
 }
 state_format='{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}|{{.State.OOMKilled}}|{{.State.ExitCode}}|{{.RestartCount}}'
-compose() { docker compose -p i-have-been --profile deploy --env-file "$env_file" -f "$release/docker-compose.prod.yml" "$@"; }
+compose() {
+  local profiles=()
+  [[ "$MALWARE_SCANNING_ENABLED" != true ]] || profiles+=(--profile scanner)
+  docker compose -p i-have-been --profile deploy "${profiles[@]}" --env-file "$env_file" -f "$release/docker-compose.prod.yml" "$@"
+}
 
 diagnostics() {
   local service container details
@@ -76,6 +82,15 @@ diagnostics() {
     details=$(docker inspect --format "$state_format" "$container" 2>/dev/null) || continue
     report "$service: state|health|OOMKilled|exit|restarts=$details"
   done
+  # Only fixed storage-health categories may leave the droplet, never raw app logs.
+  local storage_error
+  storage_error=$(compose logs --no-color --tail 100 app 2>/dev/null | python3 -c '
+import re, sys
+pattern = re.compile(r"Garage S3 readiness failed: (?:HTTP [0-9]{1,3}; )?reason=(?:access-denied|invalid-access-key|signature-mismatch|missing-bucket|clock-skew|signing-region|service-unavailable|s3-error|connection-error|timeout|unexpected-error)\.")
+errors = [match.group(0) for match in pattern.finditer(sys.stdin.read())]
+if errors: print(errors[-1])
+') || storage_error=""
+  [[ -z "$storage_error" ]] || report "$storage_error"
 }
 failed() {
   local status=${1:-$?}
@@ -89,7 +104,11 @@ failed() {
     export RELEASE_SHA=${RELEASE_SHA%%-*}
     APP_IMAGE=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$previous/release.json")
     APP_HOSTNAME=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["hostname"])' "$previous/release.json")
-    docker compose -p i-have-been --profile deploy --env-file "$env_file" -f "$previous/docker-compose.prod.yml" up -d --no-deps --no-build app || echo 'Application rollback failed; inspect deployment logs.' >&2
+    MALWARE_SCANNING_ENABLED=$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1])).get("malwareScanningEnabled", True)).lower())' "$previous/release.json")
+    export MALWARE_SCANNING_ENABLED
+    rollback_profiles=()
+    [[ "$MALWARE_SCANNING_ENABLED" != true ]] || rollback_profiles+=(--profile scanner)
+    docker compose -p i-have-been --profile deploy "${rollback_profiles[@]}" --env-file "$env_file" -f "$previous/docker-compose.prod.yml" up -d --no-deps --no-build app || echo 'Application rollback failed; inspect deployment logs.' >&2
   elif [[ "$app_replaced" == true ]]; then
     compose stop app || true
   fi
@@ -102,16 +121,23 @@ trap 'failed 130' INT
 trap 'failed 143' TERM
 set_stage preflight
 compose config --quiet
+set_stage scanning-configuration
+if [[ "$MALWARE_SCANNING_ENABLED" == false ]]; then
+  report 'Server-side malware scanning is explicitly disabled; uploaded files will not receive an antivirus scan.'
+  # Stop only this project's old scanner if it exists, without activating its profile or deleting definitions.
+  scanner_container=$(docker ps -aq --filter label=com.docker.compose.project=i-have-been --filter label=com.docker.compose.service=clamav)
+  [[ -z "$scanner_container" ]] || docker stop "$scanner_container" >/dev/null
+fi
 set_stage resource-preflight
 # Linux physical RAM only: swap and Docker's 4g scanner limit do not provide host capacity.
 # 3 GiB is a rejection floor, not a sufficient shared-host sizing recommendation.
 memory_kib=$(awk '$1 == "MemTotal:" && $3 == "kB" {print $2}' /proc/meminfo)
 [[ "$memory_kib" =~ ^[0-9]{1,12}$ ]] || { report 'Cannot determine physical host RAM from /proc/meminfo.' >&2; false; }
-if ((10#$memory_kib < 3 * 1024 * 1024)); then
+if [[ "$MALWARE_SCANNING_ENABLED" == true ]] && ((10#$memory_kib < 3 * 1024 * 1024)); then
   report "Insufficient physical host RAM: $((10#$memory_kib / 1024)) MiB; this production stack requires at least 3072 MiB before deployment. Resize to a 4 GiB or larger plan, with additional capacity for shared services, or move the scanner to a private host." >&2
   false
 fi
-report "Physical host RAM: $((10#$memory_kib / 1024)) MiB; minimum-capacity check passed (shared-service headroom still required)."
+report "Physical host RAM: $((10#$memory_kib / 1024)) MiB; scanning enabled=$MALWARE_SCANNING_ENABLED (shared-service headroom still required)."
 unset memory_kib
 printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$registry_user" --password-stdin
 unset GHCR_TOKEN
@@ -120,12 +146,14 @@ telemetry_services=()
 case $'\n'$(compose config --services)$'\n' in
   *$'\notel-collector\n'*) telemetry_services+=(otel-collector) ;;
 esac
-compose pull postgres garage clamav garage-init migrate app "${telemetry_services[@]}"
+infrastructure=(postgres garage)
+[[ "$MALWARE_SCANNING_ENABLED" != true ]] || infrastructure+=(clamav)
+compose pull "${infrastructure[@]}" garage-init migrate app "${telemetry_services[@]}"
 set_stage infrastructure
 resources
-compose up -d --no-build postgres garage clamav "${telemetry_services[@]}"
+compose up -d --no-build "${infrastructure[@]}" "${telemetry_services[@]}"
 deadline=$((SECONDS + 1200))
-for service in postgres garage clamav; do
+for service in "${infrastructure[@]}"; do
   next_report=0
   started=$SECONDS
   while true; do
@@ -174,11 +202,11 @@ for ((attempt=0; attempt<30; attempt++)); do
 done
 [[ "$ready" == true ]]
 set_stage record-release
-python3 - "$release" "$APP_IMAGE" "$APP_HOSTNAME" "$TRUSTED_PROXY_IP" <<'PY'
+python3 - "$release" "$APP_IMAGE" "$APP_HOSTNAME" "$TRUSTED_PROXY_IP" "$MALWARE_SCANNING_ENABLED" <<'PY'
 import json,sys
 from pathlib import Path
-release,image,hostname,proxy = sys.argv[1:]
-Path(release,'release.json').write_text(json.dumps({'image':image,'hostname':hostname,'trustedProxy':proxy},indent=2)+'\n')
+release,image,hostname,proxy,scanning = sys.argv[1:]
+Path(release,'release.json').write_text(json.dumps({'image':image,'hostname':hostname,'trustedProxy':proxy,'malwareScanningEnabled':scanning == 'true'},indent=2)+'\n')
 PY
 ln -s "$release" "$base/.current.next"
 mv -Tf -- "$base/.current.next" "$base/current"

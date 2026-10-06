@@ -6,6 +6,8 @@ for required in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_SSH_KNOWN_HOSTS DE
   [[ -n "${!required:-}" ]] || { printf 'Missing production setting: %s\n' "$required" >&2; exit 1; }
 done
 DEPLOY_PORT=${DEPLOY_PORT:-22}
+MALWARE_SCANNING_ENABLED=${MALWARE_SCANNING_ENABLED:-true}
+[[ "$MALWARE_SCANNING_ENABLED" == true || "$MALWARE_SCANNING_ENABLED" == false ]] || { echo 'MALWARE_SCANNING_ENABLED must be true or false.' >&2; exit 1; }
 # Required variables were validated through indirect expansion above.
 # shellcheck disable=SC2153
 [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ && "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
@@ -36,7 +38,7 @@ scp "${ssh_options[@]}" -P "$DEPLOY_PORT" "$work/release.tar.gz" "$destination:$
 # shellcheck disable=SC2016
 remote_command=$(python3 -c 'import shlex,sys; print(shlex.join(sys.argv[1:]))' bash -c \
   'set -e; umask 077; IFS= read -r GHCR_TOKEN; export GHCR_TOKEN; runner=$(mktemp); trap '\''rm -f -- "$runner"'\'' EXIT; cat > "$runner"; bash "$runner" "$@"' -- \
-  "$DEPLOY_PATH" "$incoming" "$APP_IMAGE" "$APP_HOSTNAME" "$CADDY_CONTAINER" "$GHCR_USERNAME")
+  "$DEPLOY_PATH" "$incoming" "$APP_IMAGE" "$APP_HOSTNAME" "$CADDY_CONTAINER" "$GHCR_USERNAME" "$MALWARE_SCANNING_ENABLED")
 if {
   printf '%s\n' "$GHCR_TOKEN"
   cat scripts/deploy-remote.sh

@@ -2,14 +2,16 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 
 // Render with dummy example values; never print a resolved production environment.
-const config = JSON.parse(execFileSync('docker', ['compose', '-p', 'i-have-been', '--env-file', '.env.example', '-f', 'docker-compose.prod.yml', '--profile', 'deploy', 'config', '--format', 'json'], {
-  encoding: 'utf8', env: {...process.env, APP_IMAGE: `ghcr.io/example/i-have-been@sha256:${'0'.repeat(64)}`, APP_HOSTNAME: 'i-have-been.example.com', TRUSTED_PROXY_IP: '172.20.0.2'}
+const config = JSON.parse(execFileSync('docker', ['compose', '-p', 'i-have-been', '--env-file', '.env.example', '-f', 'docker-compose.prod.yml', '--profile', 'deploy', '--profile', 'scanner', 'config', '--format', 'json'], {
+  encoding: 'utf8', env: {...process.env, APP_IMAGE: `ghcr.io/example/i-have-been@sha256:${'0'.repeat(64)}`, APP_HOSTNAME: 'i-have-been.example.com', TRUSTED_PROXY_IP: '172.20.0.2', MALWARE_SCANNING_ENABLED: 'true'}
 }));
 assert.deepEqual(Object.keys(config.services).sort(), ['app', 'clamav', 'garage', 'garage-init', 'migrate', 'postgres']);
 for (const service of Object.values(config.services)) {
   assert.ok(!service.build, 'Production must use the tested registry image');
   assert.ok(!service.ports?.length, 'No production service publishes host ports');
 }
+assert.equal(config.services.app.environment.MalwareScanning__Enabled, 'true');
+assert.deepEqual(config.services.clamav.profiles, ['scanner']);
 assert.equal(config.services.app.environment.ASPNETCORE_ENVIRONMENT, 'Production');
 assert.equal(config.services.app.environment.Security__TrustedProxies__0, '172.20.0.2');
 assert.equal(config.services.app.labels.caddy, 'i-have-been.example.com');
@@ -23,8 +25,8 @@ assert.equal(config.services.migrate.image, config.services.app.image);
 assert.deepEqual(config.services.migrate.profiles, ['deploy']);
 assert.deepEqual(config.services['garage-init'].profiles, ['deploy']);
 assert.equal(config.volumes.protection_keys.name, 'i-have-been_protection_keys');
-const monitored = JSON.parse(execFileSync('docker', ['compose', '-p', 'i-have-been', '--env-file', '.env.example', '-f', 'docker-compose.prod.yml', '--profile', 'deploy', '--profile', 'observability', 'config', '--format', 'json'], {
-  encoding: 'utf8', env: {...process.env, APP_IMAGE: `ghcr.io/example/i-have-been@sha256:${'0'.repeat(64)}`, APP_HOSTNAME: 'i-have-been.example.com', TRUSTED_PROXY_IP: '172.20.0.2', TELEMETRY_ENABLED: 'true', GRAFANA_CLOUD_API_TOKEN: 'fixture-private-token'}
+const monitored = JSON.parse(execFileSync('docker', ['compose', '-p', 'i-have-been', '--env-file', '.env.example', '-f', 'docker-compose.prod.yml', '--profile', 'deploy', '--profile', 'scanner', '--profile', 'observability', 'config', '--format', 'json'], {
+  encoding: 'utf8', env: {...process.env, APP_IMAGE: `ghcr.io/example/i-have-been@sha256:${'0'.repeat(64)}`, APP_HOSTNAME: 'i-have-been.example.com', TRUSTED_PROXY_IP: '172.20.0.2', MALWARE_SCANNING_ENABLED: 'true', TELEMETRY_ENABLED: 'true', GRAFANA_CLOUD_API_TOKEN: 'fixture-private-token'}
 }));
 const collector = monitored.services['otel-collector'];
 assert.ok(collector && !collector.networks.proxy && !collector.ports?.length);
@@ -37,6 +39,18 @@ assert.equal(monitored.services.app.environment.Telemetry__Endpoint, 'http://ote
 assert.ok(!Object.keys(monitored.services.app.environment).some(key => key.includes('GRAFANA')));
 assert.ok(!collector.volumes.some(volume => volume.source.includes('docker.sock')));
 console.log('Production Compose validation passed: shared Caddy, private services, persistent keys, no builds or test containers.');
+
+// Staging deploys the same app/storage with no scanner container or health dependency.
+const lightweight=JSON.parse(execFileSync('docker',['compose','-p','i-have-been','--env-file','.env.example','-f','docker-compose.prod.yml','--profile','deploy','config','--format','json'],{
+  encoding:'utf8',env:{...process.env,COMPOSE_PROFILES:'',MALWARE_SCANNING_ENABLED:'false',APP_IMAGE:config.services.app.image,APP_HOSTNAME:'i-have-been.example.com',TRUSTED_PROXY_IP:'172.20.0.2'}
+}));
+assert.deepEqual(Object.keys(lightweight.services).sort(),['app','garage','garage-init','migrate','postgres']);
+assert.equal(lightweight.services.app.environment.MalwareScanning__Enabled,'false');
+assert.ok(!lightweight.services.app.depends_on.clamav);
+assert.equal(lightweight.services.app.image,config.services.app.image);
+assert.equal(lightweight.volumes.garage_data.name,config.volumes.garage_data.name);
+assert.ok(Object.values(lightweight.services).every(service=>!service.ports?.length));
+console.log('Disabled-scanning Compose validation passed: scanner excluded, private media and persistent volumes preserved.');
 
 // The disposable override must preserve app security and private service isolation.
 const ci = JSON.parse(execFileSync('docker', ['compose', '-p', 'ihb-ci', '--env-file', '.env.example', '-f', 'docker-compose.yml', '-f', 'docker-compose.ci.yml', '--profile', 'observability', 'config', '--format', 'json'], {encoding: 'utf8'}));
@@ -52,5 +66,6 @@ assert.deepEqual(ci.services.clamav.healthcheck.test, ['CMD', 'clamdcheck.sh']);
 assert.equal(ci.services.clamav.volumes.find(volume => volume.target === '/usr/local/bin/clamdcheck.sh').read_only, true);
 assert.equal(ci.services.app.depends_on.clamav.condition, 'service_healthy');
 assert.equal(ci.services.app.environment.MalwareScanning__Host, 'clamav');
+assert.equal(ci.services.app.environment.MalwareScanning__Enabled, 'true');
 assert.ok(!Object.keys(ci.services.app.environment).some(key => /DefinitionAge|Disable.*Scan|Skip.*Scan/i.test(key)));
 console.log('CI scanner validation passed: same engine, real scanning, freshness gate, private network and isolated cache.');
